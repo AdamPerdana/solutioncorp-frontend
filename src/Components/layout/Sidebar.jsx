@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 
-export default function Sidebar({ onLogout }) {
+export default function Sidebar({ onLogout, closeMobileMenu }) {
   const [isLaporanOpen, setIsLaporanOpen] = useState(false);
 
-  // Style dasar tombol menu biar kodenya rapi dan seragam
   const linkStyle = ({ isActive }) =>
     `w-full flex items-center px-3 py-2 text-xs font-medium rounded-lg transition-all ${
       isActive
@@ -12,10 +11,14 @@ export default function Sidebar({ onLogout }) {
         : "text-gray-400 hover:text-white hover:bg-[#262932]"
     }`;
 
+  // Fungsi tutup sidebar di layar HP
+  const handleMobileClick = () => {
+    if (closeMobileMenu) closeMobileMenu();
+  };
+
   return (
-    <div className="w-64 min-h-screen bg-[#1a1c23] border-r border-gray-800 flex flex-col justify-between font-sans text-gray-300 select-none flex-shrink-0">
+    <div className="w-64 h-screen bg-[#1a1c23] border-r border-gray-800 flex flex-col justify-between font-sans text-gray-300 select-none flex-shrink-0">
       <div className="overflow-y-auto flex-1">
-        {/* Header Branding */}
         <div className="p-6 border-b border-gray-800/50 bg-[#15171c]/30">
           <h1 className="text-sm font-bold text-white tracking-wide uppercase">
             SOLUTION CORP
@@ -26,9 +29,23 @@ export default function Sidebar({ onLogout }) {
         </div>
 
         {/* Dashboard */}
-        <div className="px-4 py-4">
-          <NavLink to="/dashboard" className={linkStyle}>
-            <span className="mr-2.5 text-sm">🏠</span> Dashboard
+        <div className="px-4 pt-4 pb-2 space-y-1">
+          {/* Menu Dashboard Global */}
+          <NavLink
+            to="/dashboard"
+            className={linkStyle}
+            onClick={handleMobileClick}
+          >
+            <span className="mr-2.5 text-sm">🏠</span> Dashboard Global
+          </NavLink>
+
+          {/* Menu Dashboard Toko */}
+          <NavLink
+            to="/dashboard-toko"
+            className={linkStyle}
+            onClick={handleMobileClick}
+          >
+            <span className="mr-2.5 text-sm">🏪</span> Dashboard Toko
           </NavLink>
         </div>
 
@@ -38,14 +55,33 @@ export default function Sidebar({ onLogout }) {
             Sales
           </p>
           <nav className="space-y-1">
-            <NavLink to="/sales/customer" className={linkStyle}>
+            <NavLink
+              to="/sales/customer"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Customer
             </NavLink>
-            <NavLink to="/sales/invoice-proforma" className={linkStyle}>
+            <NavLink
+              to="/sales/invoice-proforma"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Invoice Proforma
             </NavLink>
-            <NavLink to="/sales/pos" className={linkStyle}>
+            <NavLink
+              to="/sales/pos"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Point Of Sales (POS)
+            </NavLink>
+            <NavLink
+              to="/sales/laporan-sales"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
+              <span className="mr-2.5 text-sm">⚪</span> Laporan Sales
             </NavLink>
           </nav>
         </div>
@@ -56,16 +92,32 @@ export default function Sidebar({ onLogout }) {
             Finance
           </p>
           <nav className="space-y-1">
-            <NavLink to="/finance/piutang" className={linkStyle}>
+            <NavLink
+              to="/finance/piutang"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Piutang
             </NavLink>
-            <NavLink to="/finance/hutang" className={linkStyle}>
+            <NavLink
+              to="/finance/hutang"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Hutang
             </NavLink>
-            <NavLink to="/finance/biaya" className={linkStyle}>
+            <NavLink
+              to="/finance/biaya"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Catatan Biaya
             </NavLink>
-            <NavLink to="/finance/hpp" className={linkStyle}>
+            <NavLink
+              to="/finance/hpp"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Master Hpp
             </NavLink>
           </nav>
@@ -77,22 +129,52 @@ export default function Sidebar({ onLogout }) {
             Inventory
           </p>
           <nav className="space-y-1">
-            <NavLink to="/inventory/stok" className={linkStyle}>
-              <span className="mr-2.5 text-sm">⚪</span> Inventory
+            <NavLink
+              to="/inventory/inventorylog"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
+              <span className="mr-2.5 text-sm">⚪</span> Inventory Log
             </NavLink>
-            <NavLink to="/inventory/produk" className={linkStyle}>
+            <NavLink
+              to="/inventory/stock"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
+              <span className="mr-2.5 text-sm">⚪</span> Stock
+            </NavLink>
+            <NavLink
+              to="/inventory/produk"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Produk
             </NavLink>
-            <NavLink to="/inventory/purchase-order" className={linkStyle}>
+            <NavLink
+              to="/inventory/purchase-order"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Purchase Order
             </NavLink>
-            <NavLink to="/inventory/supplier" className={linkStyle}>
+            <NavLink
+              to="/inventory/PoReport"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
+              <span className="mr-2.5 text-sm">⚪</span> PO Report
+            </NavLink>
+            <NavLink
+              to="/inventory/supplier"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
               <span className="mr-2.5 text-sm">⚪</span> Supplier
             </NavLink>
           </nav>
         </div>
 
-        {/* Laporan Penjualan (Dropdown) */}
+        {/* Laporan Penjualan */}
         <div className="px-4 py-2 border-t border-gray-800/40 pt-4">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Laporan Penjualan
@@ -115,20 +197,22 @@ export default function Sidebar({ onLogout }) {
 
             {isLaporanOpen && (
               <div className="pl-6 mt-1 space-y-1 border-l border-gray-800 ml-5">
-                <NavLink to="/laporan/laba-rugi" className={linkStyle}>
+                <NavLink
+                  to="/Laporan/laba-rugi"
+                  className={linkStyle}
+                  onClick={handleMobileClick}
+                >
                   Laporan laba rugi
                 </NavLink>
-                <NavLink to="/laporan/penjualan" className={linkStyle}>
+                <NavLink
+                  to="/Laporan/LaporanPenjualan"
+                  className={linkStyle}
+                  onClick={handleMobileClick}
+                >
                   Laporan penjualan
                 </NavLink>
-                <NavLink to="/laporan/pengeluaran" className={linkStyle}>
+                <NavLink to="Laporan/Pengeluaran" onClick={handleMobileClick}>
                   Laporan pengeluaran
-                </NavLink>
-                <NavLink to="/laporan/hutang" className={linkStyle}>
-                  Laporan hutang
-                </NavLink>
-                <NavLink to="/laporan/piutang" className={linkStyle}>
-                  Laporan piutang
                 </NavLink>
               </div>
             )}
@@ -136,7 +220,6 @@ export default function Sidebar({ onLogout }) {
         </div>
       </div>
 
-      {/* Profile Footer */}
       <div className="p-4 border-t border-gray-800 bg-[#15171c]">
         <div className="flex items-center justify-between mb-1 px-1">
           <div className="flex items-center space-x-3">

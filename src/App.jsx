@@ -6,15 +6,17 @@ import {
   Navigate,
 } from "react-router-dom";
 
-// Impor Komponen Layout & Gerbang Utama
-import Sidebar from "./components/layout/Sidebar";
+// Impor Komponen Layout, Login dan Dashboard
+import DashboardLayout from "./components/layout/DashboardLayout";
 import Login from "./components/layout/Login";
 import Dashboard from "./components/dashboard/Dashboard";
+import DashboardToko from "./components/dashboard/DashboardToko";
 
 // Impor Komponen Grup: Sales
 import Customer from "./components/sales/Customer";
 import InvoiceProforma from "./components/sales/InvoiceProforma";
 import Pos from "./components/sales/Pos";
+import LaporanSales from "./components/sales/LaporanSales";
 
 // Impor Komponen Grup: Finance
 import Piutang from "./components/finance/Piutang";
@@ -22,18 +24,24 @@ import Hutang from "./components/finance/Hutang";
 import Biaya from "./components/finance/Biaya";
 import Hpp from "./components/finance/Hpp";
 
-// Impor Komponen Grup: Inventory (Sudah Diperbaiki Huruf Kecil & Nama Filenya)
+// Impor Komponen Grup: Inventory
 import InventoryLog from "./components/inventory/InventoryLog";
 import Produk from "./components/inventory/Produk";
 import PurchaseOrder from "./components/inventory/PurchaseOrder";
 import Supplier from "./components/inventory/Supplier";
+import Stock from "./Components/inventory/Stock";
+import PoReport from "./Components/inventory/PoReport";
+
+// Impor Komponen Grup: Laporan
+import LabaRugi from "./components/Laporan/LabaRugi";
+import LaporanPenjualan from "./components/Laporan/LaporanPenjualan";
+import LaporanPengeluaran from "./components/Laporan/LaporanPengeluaran";
 
 function App() {
-  // Status autentikasi global
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [showSplash, setShowSplash] = useState(false);
 
-  // Fungsi transisi saat berhasil login
+  // transisi berhasil login
   const handleLoginSuccess = () => {
     setShowSplash(true);
     setTimeout(() => {
@@ -42,7 +50,7 @@ function App() {
     }, 500);
   };
 
-  // 1. Tampilan Efek Loading / Splash Screen
+  // Efek Loading
   if (showSplash) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#1a1c23] text-white animate-pulse">
@@ -51,106 +59,69 @@ function App() {
     );
   }
 
-  // 2. Proteksi Gerbang Login
+  // 2. Proteksi Login
   if (!isLoggedIn) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <Router>
-      <div className="flex bg-[#15171c] min-h-screen text-gray-200">
-        {/* Sidebar nempel permanen di kiri & menerima fungsi logout */}
-        <Sidebar onLogout={() => setIsLoggedIn(false)} />
+      <Routes>
+        {/* DashboardLayout */}
+        <Route
+          path="/"
+          element={<DashboardLayout onLogout={() => setIsLoggedIn(false)} />}
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
 
-        {/* 3. Sistem Routing Otomatis Berdasarkan URL Browser Localhost */}
-        <main className="flex-1 min-h-screen overflow-y-auto">
-          <Routes>
-            {/* Jika mengetik url utama/kosong, otomatis lempar ke dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Halaman Utama Analitik Global */}
+          <Route
+            path="dashboard"
+            element={<Dashboard onLogout={() => setIsLoggedIn(false)} />}
+          />
 
-            {/* Halaman Utama Analitik */}
-            <Route
-              path="/dashboard"
-              element={<Dashboard onLogout={() => setIsLoggedIn(false)} />}
-            />
+          {/*Dashboard Toko */}
+          <Route path="dashboard-toko" element={<DashboardToko />} />
 
-            {/* Kelompok Modul Bisnis: Sales */}
-            <Route path="/sales/customer" element={<Customer />} />
-            <Route
-              path="/sales/invoice-proforma"
-              element={<InvoiceProforma />}
-            />
-            <Route path="/sales/pos" element={<Pos />} />
+          {/* Modul: Sales  */}
+          <Route path="sales/customer" element={<Customer />} />
+          <Route path="sales/invoice-proforma" element={<InvoiceProforma />} />
+          <Route path="sales/pos" element={<Pos />} />
+          <Route path="sales/laporan-sales" element={<LaporanSales />} />
 
-            {/* Kelompok Modul Bisnis: Finance */}
-            <Route path="/finance/piutang" element={<Piutang />} />
-            <Route path="/finance/hutang" element={<Hutang />} />
-            <Route path="/finance/biaya" element={<Biaya />} />
-            <Route path="/finance/hpp" element={<Hpp />} />
+          {/* Modul: Finance */}
+          <Route path="finance/piutang" element={<Piutang />} />
+          <Route path="finance/hutang" element={<Hutang />} />
+          <Route path="finance/biaya" element={<Biaya />} />
+          <Route path="finance/hpp" element={<Hpp />} />
 
-            {/* Kelompok Modul Bisnis: Inventory */}
-            <Route path="/inventory/stok" element={<InventoryLog />} />
-            <Route path="/inventory/produk" element={<Produk />} />
-            <Route
-              path="/inventory/purchase-order"
-              element={<PurchaseOrder />}
-            />
-            <Route path="/inventory/supplier" element={<Supplier />} />
+          {/* Modul: Inventory */}
+          <Route path="inventory/inventorylog" element={<InventoryLog />} />
+          <Route path="inventory/produk" element={<Produk />} />
+          <Route path="inventory/purchase-order" element={<PurchaseOrder />} />
+          <Route path="inventory/supplier" element={<Supplier />} />
+          <Route path="inventory/stock" element={<Stock />} />
+          <Route path="inventory/PoReport" element={<PoReport />} />
 
-            {/* Kelompok Modul: Laporan Penjualan */}
-            <Route
-              path="/laporan/laba-rugi"
-              element={
-                <div className="p-8 text-sm text-gray-400">
-                  Halaman Laporan Laba Rugi
-                </div>
-              }
-            />
-            <Route
-              path="/laporan/penjualan"
-              element={
-                <div className="p-8 text-sm text-gray-400">
-                  Halaman Laporan Penjualan
-                </div>
-              }
-            />
-            <Route
-              path="/laporan/pengeluaran"
-              element={
-                <div className="p-8 text-sm text-gray-400">
-                  Halaman Laporan Pengeluaran
-                </div>
-              }
-            />
-            <Route
-              path="/laporan/hutang"
-              element={
-                <div className="p-8 text-sm text-gray-400">
-                  Halaman Laporan Hutang
-                </div>
-              }
-            />
-            <Route
-              path="/laporan/piutang"
-              element={
-                <div className="p-8 text-sm text-gray-400">
-                  Halaman Laporan Piutang
-                </div>
-              }
-            />
+          {/* Modul: Laporan Penjualan */}
+          <Route path="Laporan/laba-rugi" element={<LabaRugi />} />
+          <Route
+            path="Laporan/LaporanPenjualan"
+            element={<LaporanPenjualan />}
+          />
+          <Route path="laporan/pengeluaran" element={<LaporanPengeluaran />} />
 
-            {/* Proteksi url typo / tidak terdaftar (404 Page) */}
-            <Route
-              path="*"
-              element={
-                <div className="p-8 text-sm text-gray-400">
-                  Halaman Tidak Ditemukan.
-                </div>
-              }
-            />
-          </Routes>
-        </main>
-      </div>
+          {/* (404 Page) */}
+          <Route
+            path="*"
+            element={
+              <div className="p-8 text-sm text-gray-400">
+                Halaman Tidak Ditemukan.
+              </div>
+            }
+          />
+        </Route>
+      </Routes>
     </Router>
   );
 }

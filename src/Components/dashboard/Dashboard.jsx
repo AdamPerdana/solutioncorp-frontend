@@ -1,7 +1,6 @@
 import React from "react";
 
 function Dashboard({ onLogout }) {
-  // Array objek sumber data statis
   const ringkasanData = [
     {
       id: 1,
@@ -37,9 +36,7 @@ function Dashboard({ onLogout }) {
   ];
 
   return (
-    // Container background gelap dan padding
     <div className="min-h-screen bg-[#15171c] text-white font-sans p-6">
-      {/* Bagian Header: Flexbox untuk memposisikan judul di kiri dan tombol di kanan */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-wide">
@@ -50,7 +47,6 @@ function Dashboard({ onLogout }) {
           </p>
         </div>
 
-        {/* Action buttons section */}
         <div className="flex items-center gap-3 mt-4 sm:mt-0">
           <button
             onClick={() => alert("Fitur Kalender Date-Picker (Coming Soon)")}
@@ -90,7 +86,6 @@ function Dashboard({ onLogout }) {
         ))}
       </div>
 
-      {/* Placeholder untuk pengembangan fitur  */}
       <div className="mt-8 rounded-xl bg-[#1a1c23] p-8 text-center border border-dashed border-gray-800 text-gray-500 text-sm">
         Menu Manajemen Produk & Laporan Penjualan Terintegrasi Django API
         (Coming Soon)

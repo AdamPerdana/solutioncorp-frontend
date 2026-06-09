@@ -6,8 +6,8 @@ function Login({ onLoginSuccess }) {
   const [error, setError] = useState("");
 
   const handleSubmit = (e) => {
-    e.preventDefault(); // Mencegah reload halaman saat form di-submit
-    setError(""); // Reset error s
+    e.preventDefault();
+    setError(""); //
 
     // Mengambil kredensial dari .env (fallback ke nilai default kalo .env tidak ada)
     const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || "admin@admin.com";
@@ -42,7 +42,6 @@ function Login({ onLoginSuccess }) {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Input Email dengan styling Tailwind yang modern */}
           <div>
             <label
               htmlFor="email"
