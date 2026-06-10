@@ -7,35 +7,35 @@ import {
 } from "react-router-dom";
 
 // Impor Komponen Layout, Login dan Dashboard
-import DashboardLayout from "./components/layout/DashboardLayout";
-import Login from "./components/layout/Login";
-import Dashboard from "./components/dashboard/Dashboard";
-import DashboardToko from "./components/dashboard/DashboardToko";
+import DashboardLayout from "./Admin/layout/DashboardLayout";
+import Login from "./Admin/layout/Login";
+import Dashboard from "./Admin/dashboard/Dashboard";
+import DashboardToko from "./Admin/dashboard/DashboardToko";
 
 // Impor Komponen Grup: Sales
-import Customer from "./components/sales/Customer";
-import InvoiceProforma from "./components/sales/InvoiceProforma";
-import Pos from "./components/sales/Pos";
-import LaporanSales from "./components/sales/LaporanSales";
+import Customer from "./Admin/sales/Customer";
+import InvoiceProforma from "./Admin/sales/InvoiceProforma";
+import Pos from "./Admin/sales/Pos";
+import LaporanSales from "./Admin/sales/LaporanSales";
 
 // Impor Komponen Grup: Finance
-import Piutang from "./components/finance/Piutang";
-import Hutang from "./components/finance/Hutang";
-import Biaya from "./components/finance/Biaya";
-import Hpp from "./components/finance/Hpp";
+import Piutang from "./Admin/finance/Piutang";
+import Hutang from "./Admin/finance/Hutang";
+import Biaya from "./Admin/finance/Biaya";
+import Hpp from "./Admin/finance/Hpp";
 
 // Impor Komponen Grup: Inventory
-import InventoryLog from "./components/inventory/InventoryLog";
-import Produk from "./components/inventory/Produk";
-import PurchaseOrder from "./components/inventory/PurchaseOrder";
-import Supplier from "./components/inventory/Supplier";
-import Stock from "./Components/inventory/Stock";
-import PoReport from "./Components/inventory/PoReport";
+import InventoryLog from "./Admin/inventory/InventoryLog";
+import Produk from "./Admin/inventory/Produk";
+import PurchaseOrder from "./Admin/inventory/PurchaseOrder";
+import Supplier from "./Admin/inventory/Supplier";
+import Stock from "./Admin/inventory/Stock";
+import PoReport from "./Admin/inventory/PoReport";
 
 // Impor Komponen Grup: Laporan
-import LabaRugi from "./components/Laporan/LabaRugi";
-import LaporanPenjualan from "./components/Laporan/LaporanPenjualan";
-import LaporanPengeluaran from "./components/Laporan/LaporanPengeluaran";
+import LabaRugi from "./Admin/Laporan/LabaRugi";
+import LaporanPenjualan from "./Admin/Laporan/LaporanPenjualan";
+import LaporanPengeluaran from "./Admin/Laporan/LaporanPengeluaran";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
