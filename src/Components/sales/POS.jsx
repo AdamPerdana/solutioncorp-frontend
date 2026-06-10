@@ -11,7 +11,7 @@ export default function Pos() {
 
   //  DATA MASTER CUSTOMER
   const [daftarCustomer, setDaftarCustomer] = useState([
-    "Pelanggan Langsung (Cash)",
+    "-- Pilih Customer --",
     "CV. Victoria Indo Pratama",
     "PT. Jaya Sukses Mandiri",
     "Hotel Nusantara Jakarta",
@@ -49,7 +49,7 @@ export default function Pos() {
   // FORM ISIAN LEMBAR KERJA ADMINISTRATIF
   const [formData, setFormData] = useState({
     nomorInvoice: "POS-20260608-001",
-    pelanggan: "Pelanggan Langsung (Cash)",
+    pelanggan: "-- Pilih Customer --",
     tanggal: "2026-06-08",
     metodeBayar: "TUNAI",
     jatahTempoHari: 0,
@@ -270,16 +270,16 @@ export default function Pos() {
           {/* SEC 1: DOKUMEN HEADER ADMINISTRASI */}
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2">
-              📋 1. Dokumen Header
+              📋 1. Informasi Customer
             </h3>
             <div className="space-y-2.5 text-xs">
               <div>
                 <label className="block text-gray-400 mb-1">
-                  Nomor Invoice Kasir
+                  Nomor Invoice
                 </label>
                 <input
                   type="text"
-                  value={formData.nomorInvoice}
+                  placeholder="54/SCI/6/2026"
                   onChange={(e) =>
                     setFormData({ ...formData, nomorInvoice: e.target.value })
                   }
@@ -455,7 +455,7 @@ export default function Pos() {
             className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3"
           >
             <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2">
-              📦 2. Muat Artikel Barang
+              📦 2. Produk
             </h3>
             <div className="space-y-2.5 text-xs">
               <div>
@@ -476,7 +476,7 @@ export default function Pos() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-gray-400 mb-1">Qty Jual</label>
+                  <label className="block text-gray-400 mb-1">Qty</label>
                   <input
                     type="number"
                     placeholder="0"
@@ -512,7 +512,7 @@ export default function Pos() {
               type="submit"
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-[11px] uppercase tracking-wider transition-all"
             >
-              ➕ Masukkan Meja Kasir
+              ➕ Tambahkan Produk
             </button>
           </form>
         </div>
@@ -523,7 +523,7 @@ export default function Pos() {
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-4">
             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
               <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                🛒 Meja Keranjang Kasir POS
+                🛒 Point of Sale
               </h3>
               <div className="text-right text-xs font-mono">
                 <span className="text-gray-500 mr-4">
@@ -543,7 +543,7 @@ export default function Pos() {
                 <thead>
                   <tr className="bg-[#15171c] text-gray-400 text-[10px] font-bold select-none border-b border-gray-800">
                     <th className="p-2.5 pl-4">SKU</th>
-                    <th className="p-2.5">Nama Barang Varian Sterno</th>
+                    <th className="p-2.5">Nama Produk </th>
                     <th className="p-2.5 text-right">Harga Jual</th>
                     <th className="p-2.5 text-right">Qty</th>
                     <th className="p-2.5 text-right">Subtotal</th>
@@ -625,7 +625,7 @@ export default function Pos() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-[#15171c] text-gray-400 text-[10px] border-b border-gray-800">
-                    <th className="p-2.5 pl-4">No. Faktur</th>
+                    <th className="p-2.5 pl-4">No. Invoice</th>
                     <th className="p-2.5">Tanggal</th>
                     <th className="p-2.5">Pelanggan Toko</th>
                     <th className="p-2.5 text-center">Metode</th>

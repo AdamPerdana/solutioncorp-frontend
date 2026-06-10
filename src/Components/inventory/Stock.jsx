@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
 export default function Stok() {
-  // 1. DATA MASTER PRODUK & STOK AKTUAL (Tersinkronisasi LocalStorage)
   const [daftarStok, setDaftarStok] = useState(() => {
     const dataLokal = localStorage.getItem(
       "PT_Solution_Inventory_Stok_Realtime",
@@ -32,15 +31,12 @@ export default function Stok() {
     ];
   });
 
-  // State Form Input Kiri (Eksekusi Mutasi)
   const [selectedIndexProduk, setSelectedIndexProduk] = useState("");
   const [jenisMutasi, setJenisMutasi] = useState("MASUK");
   const [jumlahQty, setJumlahQty] = useState("");
 
-  // State Pencarian Tabel Kanan
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Auto-save data stok ter-update ke localStorage
   useEffect(() => {
     localStorage.setItem(
       "PT_Solution_Inventory_Stok_Realtime",
@@ -48,16 +44,14 @@ export default function Stok() {
     );
   }, [daftarStok]);
 
-  // FUNGSI UTAMA: PICU EDIT (Langsung pilih produk di dropdown form kiri)
   const handleEditClick = (item) => {
     const idxStok = daftarStok.findIndex((prod) => prod.sku === item.sku);
     if (idxStok !== -1) {
       setSelectedIndexProduk(idxStok.toString());
-      setJumlahQty(""); // Kosongkan qty biar siap diinput manual nilai mutasinya
+      setJumlahQty("");
     }
   };
 
-  // FUNGSI EKSEKUSI MUTASI
   const handleEksekusiMutasi = (e) => {
     e.preventDefault();
     if (selectedIndexProduk === "" || !jumlahQty) return;
@@ -84,7 +78,6 @@ export default function Stok() {
     setJumlahQty("");
   };
 
-  // Pencarian Produk di Tabel Kanan
   const filteredStok = daftarStok.filter(
     (item) =>
       item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,12 +89,8 @@ export default function Stok() {
       {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
-          Manajemen & Eksekusi Stok
+          Manajemen Stok
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Form kendali cepat untuk mutasi kuantitas fisik dan monitoring status
-          pemenuhan batas aman barang gudang.
-        </p>
       </div>
 
       {/* GRID RESPONSIVE LAYOUT */}
@@ -112,7 +101,7 @@ export default function Stok() {
           className="xl:col-span-3 bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3.5"
         >
           <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2">
-            ➕ Input Alur Stok
+            ➕ Input Stok
           </h3>
 
           <div className="space-y-2.5 text-xs">
@@ -195,7 +184,7 @@ export default function Stok() {
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">
-              📋 Status Stok Terkini
+              📋 Status Stok
             </h3>
             <div className="relative w-full sm:max-w-xs">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 text-xs">

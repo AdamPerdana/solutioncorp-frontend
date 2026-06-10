@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 
 export default function Hpp() {
-  // 1. DATA MASTER PRODUK
   const [produkGudang] = useState([
     { sku: "STR-001", nama: "Sterno Kaleng Original Pxton" },
     { sku: "STR-002", nama: "Sterno Gel Refill 1kg Pxton" },
     { sku: "STR-003", nama: "Sterno Cair Eco Liquid 1L" },
   ]);
 
-  // 2. State utama SKU HPP
   const [daftarHpp, setDaftarHpp] = useState([
     {
       id: 1,
@@ -26,15 +24,12 @@ export default function Hpp() {
     },
   ]);
 
-  // 3. State Form Input (SKU & Nama diambil via pilihan dropdown)
   const [selectedIndexProduk, setSelectedIndexProduk] = useState("");
   const [hargaBeliInput, setHargaBeliInput] = useState("");
   const [hargaJualInput, setHargaJualInput] = useState("");
 
-  // State Pencarian Tabel
   const [searchTerm, setSearchTerm] = useState("");
 
-  // FUNGSI UTAMA: EDIT (Kembalikan nilai ke form input kiri)
   const handleEditClick = (item) => {
     const idxGudang = produkGudang.findIndex((prod) => prod.sku === item.sku);
     if (idxGudang !== -1) {
@@ -44,7 +39,6 @@ export default function Hpp() {
     }
   };
 
-  // FUNGSI EKSEKUSI: UPDATE HARGA
   const handleSimpanHpp = (e) => {
     e.preventDefault();
     if (selectedIndexProduk === "" || !hargaBeliInput || !hargaJualInput)
@@ -97,12 +91,8 @@ export default function Hpp() {
       {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
-          Master HPP & Produk
+          Master HPP Produk
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Manajemen penetapan nilai modal dan harga jual target. Tersinkronisasi
-          otomatis dengan data varian modul gudang.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
@@ -173,7 +163,7 @@ export default function Hpp() {
             type="submit"
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-[11px] transition-all uppercase tracking-wider shadow-lg shadow-emerald-950/20 active:scale-95"
           >
-            💾 Amankan Nilai Master HPP
+            💾 Tambah Master HPP
           </button>
         </form>
 

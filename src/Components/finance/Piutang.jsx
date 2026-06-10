@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 export default function Piutang() {
-  // 1. Data Piutang otomatis dari POS
   const [daftarPiutang, setDaftarPiutang] = useState([
     {
       id: 1,
@@ -28,7 +27,7 @@ export default function Piutang() {
       nomorInvoice: "POS-20260520-045",
       pelanggan: "Hotel Nusantara Jakarta",
       tanggalTransaksi: "2026-05-20",
-      jatuhTempo: "2026-06-03", // Sudah lewat tanggal, otomatis masuk alarm penagihan
+      jatuhTempo: "2026-06-03",
       totalTagihan: 8500000,
       sisaPiutang: 8500000,
       statusPiutang: "Jatuh Tempo",
@@ -48,8 +47,8 @@ export default function Piutang() {
         if (item.id === piutangAkanDilunasi.id) {
           return {
             ...item,
-            sisaPiutang: 0, // Langsung habis terbayar full
-            statusPiutang: "Lunas", // Status berganti mutlak jadi Lunas
+            sisaPiutang: 0,
+            statusPiutang: "Lunas",
           };
         }
         return item;
@@ -83,13 +82,7 @@ export default function Piutang() {
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 flex flex-col">
       {/* HEADER HALAMAN */}
       <div className="pb-4 border-b border-gray-800 mb-6">
-        <h2 className="text-xl font-bold text-white tracking-wide">
-          Buku Piutang Usaha
-        </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Mencatat tagihan tempo dari kasir. Sistem pembayaran mutlak lunas full
-          tanpa cicilan.
-        </p>
+        <h2 className="text-xl font-bold text-white tracking-wide">Piutang</h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -103,7 +96,7 @@ export default function Piutang() {
         </div>
         <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-            Macet / Jatuh Tempo
+            Jatuh Tempo
           </p>
           <p className="text-xl font-black text-red-500 mt-1">
             Rp {totalOverdue.toLocaleString()}
@@ -163,8 +156,7 @@ export default function Piutang() {
                 <th className="p-4">Pelanggan</th>
                 <th className="p-4">Tgl Nota</th>
                 <th className="p-4">Jatuh Tempo</th>
-                <th className="p-4 text-right">Total Tagihan</th>
-                <th className="p-4 text-right">Sisa Piutang</th>
+                <th className="p-4 text-center">Total Tagihan</th>
                 <th className="p-4 text-center">Status</th>
                 <th className="p-4 text-center">Aksi Pembaruan</th>
               </tr>
@@ -199,11 +191,8 @@ export default function Piutang() {
                     >
                       {item.jatuhTempo}
                     </td>
-                    <td className="p-4 text-right text-gray-300 font-semibold">
+                    <td className="p-4 text-center text-gray-300 font-semibold">
                       Rp {item.totalTagihan.toLocaleString()}
-                    </td>
-                    <td className="p-4 text-right font-bold text-amber-400">
-                      Rp {item.sisaPiutang.toLocaleString()}
                     </td>
                     <td className="p-4 text-center">
                       <span

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 
 export default function PurchaseOrder() {
-  // 1. DATA MASTER ACUAN DROPDOWN (Nanti tinggal ditarik dari API GET Produk/Supplier)
   const [produkGudang] = useState([
     { sku: "STR-001", nama: "Sterno Kaleng Original Pxton" },
     { sku: "STR-002", nama: "Sterno Gel Refill 1kg Pxton" },
@@ -14,7 +13,6 @@ export default function PurchaseOrder() {
     { id: 3, nama: "CV Distribusi Solusi Kimia" },
   ]);
 
-  // 2. DATABASE ARSIP TRANSAKSI (Sengaja tidak pakai localStorage biar kehapus pas PC mati/refresh)
   const [arsipPO, setArsipPO] = useState([
     {
       id: 1,
@@ -34,10 +32,10 @@ export default function PurchaseOrder() {
     },
   ]);
 
-  // 3. STATE KERANJANG DRAFT (MULTI-ARTIKEL)
+  // KERANJANG
   const [keranjangDraft, setKeranjangDraft] = useState([]);
 
-  // State Form Isian Lembar Kerja
+  // Form Isian Lembar Kerja
   const [metaPO, setMetaPO] = useState({
     noPO: "",
     supplier: "",
@@ -50,7 +48,7 @@ export default function PurchaseOrder() {
     hargaBeli: "",
   });
 
-  // State Pencarian & Modal Konfirmasi
+  //Pencarian & Modal Konfirmasi
   const [searchTerm, setSearchTerm] = useState("");
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
 
@@ -101,7 +99,7 @@ export default function PurchaseOrder() {
     setItemInput({ selectedIndexProduk: "", qty: "", hargaBeli: "" });
   };
 
-  // FUNGSI: HAPUS SATU BARANG DI KERANJANG DRAFT
+  // HAPUS SATU BARANG DI KERANJANG DRAFT
   const handleHapusItemDraft = (sku) => {
     setKeranjangDraft((prev) => prev.filter((item) => item.sku !== sku));
   };
@@ -110,7 +108,7 @@ export default function PurchaseOrder() {
     return keranjangDraft.reduce((sum, item) => sum + item.total, 0);
   }, [keranjangDraft]);
 
-  // TAHAP 1 VALIDASI: AMBIL BUNDEL DATA SEBELUM TEMBAK
+  // VALIDASI: AMBIL BUNDEL DATA SEBELUM TEMBAK
   const handlePicuKonfirmasi = () => {
     if (
       metaPO.noPO.trim() === "" ||
@@ -123,7 +121,6 @@ export default function PurchaseOrder() {
       return;
     }
 
-    // Variabel PAYLOAD ini yang besok tinggal kamu bungkus buat ditembak ke Django API
     setDataAkanDisimpan({
       noPO: metaPO.noPO.trim().toUpperCase(),
       supplier: metaPO.supplier,
@@ -133,7 +130,7 @@ export default function PurchaseOrder() {
     });
   };
 
-  // TAHAP 2 SIMPAN: MASUK ARSIP MOCKUP SEMENTARA
+  // SIMPAN: MASUK ARSIP MOCKUP SEMENTARA
   const handleEksekusiSimpan = () => {
     if (!dataAkanDisimpan) return;
 
@@ -160,12 +157,8 @@ export default function PurchaseOrder() {
       {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
-          Purchase Order (Mockup Multi-Item)
+          Purchase Order
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Penyusunan modul transaksi eksternal. Struktur data siap dikoneksikan
-          ke server backend Django.
-        </p>
       </div>
 
       {/* GRID RESPONSIVE LAYOUT */}
@@ -192,9 +185,7 @@ export default function PurchaseOrder() {
                 />
               </div>
               <div>
-                <label className="block text-gray-400 mb-1">
-                  Supplier Tujuan
-                </label>
+                <label className="block text-gray-400 mb-1">Supplier</label>
                 <select
                   value={metaPO.supplier}
                   onChange={(e) =>
@@ -202,7 +193,7 @@ export default function PurchaseOrder() {
                   }
                   className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white focus:border-blue-500 focus:outline-none cursor-pointer text-[11px]"
                 >
-                  <option value="">-- Pilih Supplier Partner --</option>
+                  <option value="">-- Pilih Supplier --</option>
                   {daftarSupplier.map((sup) => (
                     <option key={sup.id} value={sup.nama}>
                       {sup.nama}
@@ -218,7 +209,7 @@ export default function PurchaseOrder() {
             className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3"
           >
             <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2">
-              📦 2. Muat Artikel Barang
+              📦 2. Produk
             </h3>
             <div className="space-y-2.5 text-xs">
               <div>
@@ -282,12 +273,12 @@ export default function PurchaseOrder() {
           </form>
         </div>
 
-        {/* PANEL KANAN: DRAFT KERANJANG & HISTORI TABLE */}
+        {/* KERANJANG */}
         <div className="xl:col-span-9 space-y-5">
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-4">
             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
               <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                🛒 Draft Keranjang Multi-Item
+                🛒 Keranjang
               </h3>
               <span className="text-xs font-mono font-black text-white">
                 Total Sementara:{" "}
@@ -349,7 +340,7 @@ export default function PurchaseOrder() {
                 onClick={handlePicuKonfirmasi}
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-lg text-xs uppercase tracking-widest shadow-xl transition-all"
               >
-                💾 Simpan & Validasi Purchase Order
+                💾 Simpan & Cetak Purchase Order
               </button>
             )}
           </div>
@@ -358,7 +349,7 @@ export default function PurchaseOrder() {
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3">
             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                📋 Arsip Sejarah Pemesanan PO (Sesi Berjalan)
+                📋 Purchase Order
               </h3>
               <input
                 type="text"
@@ -375,7 +366,7 @@ export default function PurchaseOrder() {
                   <tr className="bg-[#15171c] text-gray-400 text-[10px] border-b border-gray-800">
                     <th className="p-2.5 pl-4">No. PO</th>
                     <th className="p-2.5">Tanggal</th>
-                    <th className="p-2.5">Supplier Partner</th>
+                    <th className="p-2.5">Supplier</th>
                     <th className="p-2.5 text-center">Jumlah Item</th>
                     <th className="p-2.5 text-right pr-4">Grand Total</th>
                   </tr>
@@ -405,7 +396,6 @@ export default function PurchaseOrder() {
         </div>
       </div>
 
-      {/* MODAL MOCKUP DARK UNTUK SIMPAN */}
       {dataAkanDisimpan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-blue-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">

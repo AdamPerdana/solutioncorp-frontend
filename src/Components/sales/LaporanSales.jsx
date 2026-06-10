@@ -120,10 +120,6 @@ export default function LaporanSales() {
         <h2 className="text-xl font-bold text-white tracking-wide">
           Laporan Penjualan (Sales Report)
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Pusat pemantauan omset masuk perusahaan, rekapitulasi penagihan
-          piutang customer, dan manajemen cetak dokumen.
-        </p>
       </div>
 
       {/* METRIK SUMMARY CARDS CONTROLLER */}
@@ -157,9 +153,6 @@ export default function LaporanSales() {
           <h3 className="text-xl font-black text-sky-400 font-mono mt-1">
             {ringkasanMetrik.totalNotaInvoice} Dokumen
           </h3>
-          <p className="text-[9px] text-gray-600 mt-0.5">
-            Kuantitas nota laci kasir terfilter
-          </p>
         </div>
       </div>
 
@@ -196,7 +189,7 @@ export default function LaporanSales() {
           />
         </div>
         <div>
-          <label className="block text-gray-500 mb-1">Status Keuangan</label>
+          <label className="block text-gray-500 mb-1">Status</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -221,7 +214,7 @@ export default function LaporanSales() {
                 <th className="p-3.5">Muatan Ringkas</th>
                 <th className="p-3.5 text-center">Status</th>
                 <th className="p-3.5 text-right">Nominal Omset</th>
-                <th className="p-3.5 text-center pr-5">Berkas Cetak</th>
+                <th className="p-3.5 text-center pr-5">Cetak</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/50 font-medium text-xs">

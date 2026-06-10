@@ -1,83 +1,155 @@
 import React, { useState, useMemo } from "react";
 
 export default function InvoiceProforma() {
-  // 1. DATA MASTER PRODUK PT SOLUTION CORP INDONESIA
-  const mockBarang = [
-    { id: 1, nama: "Sterno Kaleng", harga: 5600 },
-    { id: 2, nama: "Sterno Gel Pxton Kaleng", harga: 6000 },
-    { id: 3, nama: "Sterno Gel Refill Denigen", harga: 45000 },
-    { id: 4, nama: "Sterno Cair Eco Liquid 1L", harga: 19000 },
-  ];
+  // =========================================================
+  // 1. DATABASE SEMENTARA (SINKRON TOTAL DENGAN DATA POS)
+  // =========================================================
 
-  // 2. UTAMA UNTUK INFORMASI NOTA TAGIHAN (DRAF DEFAULT)
-  const [customer, setCustomer] = useState("CV. Victoria Indo Pratama");
-  const [alamat, setAlamat] = useState("Jakarta Utara");
-  const [nomorInvoice, setNomorInvoice] = useState("54/SCI/6/2026");
-  const [tanggal, setTanggal] = useState("2026-06-06");
-  const [jatuhTempo, setJatuhTempo] = useState("-");
-
-  // 3. SELEKSI PRODUK & BIAYA TAMBAHAN
-  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
-  const [qtyInput, setQtyInput] = useState("");
-  const [ongkirInput, setOngkirInput] = useState(0);
-
-  // 4. MULTI-ITEM KERANJANG KERTAS PREVIEW
-  const [itemsKeranjang, setItemsKeranjang] = useState([
-    { id: 1, nama: "Sterno Kaleng", qty: 5000, harga: 5600, total: 28000000 },
+  // DATA KATALOG PRODUK MASTER
+  const [produkGudang] = useState([
+    { sku: "STR-01", nama: "Sterno Kaleng Original", harga: 5600 },
+    { sku: "STR-02", nama: "Sterno Gel Pxton Kaleng", harga: 6000 },
+    { sku: "STR-03", nama: "Sterno Gel Refill Denigen 1kg", harga: 45000 },
+    { sku: "STR-04", nama: "Sterno Cair Eco Liquid 1L", harga: 35000 },
   ]);
 
-  // 5. PENAMBAHAN ITEM KE TABEL KERTAS
+  // DATA MASTER CUSTOMER
+  const [daftarCustomer, setDaftarCustomer] = useState([
+    "-- Pilih Customer --",
+    "CV. Victoria Indo Pratama",
+    "PT. Jaya Sukses Mandiri",
+    "Hotel Nusantara Jakarta",
+  ]);
+
+  // Kontrol tambah customer baru lewat dropdown
+  const [isTambahCustomerBaru, setIsTambahCustomerBaru] = useState(false);
+  const [namaCustomerBaru, setNamaCustomerBaru] = useState("");
+
+  // STATE FORM INFRASTRUKTUR NOTA TAGIHAN
+  const [formData, setFormData] = useState({
+    nomorInvoice: "54/SCI/6/2026",
+    pelanggan: "-- Pilih Customer --",
+    tanggal: "2026-06-06",
+    ongkir: 0,
+  });
+
+  const [alamat, setAlamat] = useState("Jakarta Utara");
+
+  // FORM INPUT ITEM MASUK KERANJANG (IDENTIK POS)
+  const [itemInput, setItemInput] = useState({
+    selectedIndexProduk: "",
+    qty: "",
+    hargaCustom: "",
+  });
+
+  // MULTI-ITEM KERANJANG KERTAS PREVIEW
+  const [itemsKeranjang, setItemsKeranjang] = useState([
+    {
+      sku: "STR-01",
+      nama: "Sterno Kaleng Original",
+      qty: 5000,
+      harga: 5600,
+      total: 28000000,
+    },
+  ]);
+
+  // =========================================================
+  // 2. LOGIKA HANDLER & KONTROL INPUT (LOGIKA POS)
+  // =========================================================
+
+  // DROPDOWN: Isi Otomatis Harga Saat Pilih Produk
+  const handleProdukSelectChange = (indexStr) => {
+    if (indexStr === "") {
+      setItemInput({ selectedIndexProduk: "", qty: "", hargaCustom: "" });
+      return;
+    }
+    const prod = produkGudang[indexStr];
+    setItemInput({
+      selectedIndexProduk: indexStr,
+      qty: itemInput.qty,
+      hargaCustom: prod.harga.toString(),
+    });
+  };
+
+  // FUNGSI: MASUKKAN BARANG KE KERANJANG INVOICE
   const handleTambahProduk = (e) => {
     e.preventDefault();
-    const kuantitas = parseInt(qtyInput);
-    if (!kuantitas || kuantitas <= 0)
-      return alert("Silakan isi volume kuantitas produk!");
-
-    const produkTerpilih = mockBarang[selectedProductIndex];
-
-    // Gabungkan kuantitas kalo produk yang dipilih sudah ada di kertas
-    const indexSama = itemsKeranjang.findIndex(
-      (item) => item.nama === produkTerpilih.nama,
-    );
-    if (indexSama !== -1) {
-      setItemsKeranjang((prev) =>
-        prev.map((item, idx) => {
-          if (idx === indexSama) {
-            const totalQty = item.qty + kuantitas;
-            return { ...item, qty: totalQty, total: totalQty * item.harga };
-          }
-          return item;
-        }),
-      );
-    } else {
-      const itemBaru = {
-        id: Date.now(),
-        nama: produkTerpilih.nama,
-        qty: kuantitas,
-        harga: produkTerpilih.harga,
-        total: kuantitas * produkTerpilih.harga,
-      };
-      setItemsKeranjang((prev) => [...prev, itemBaru]);
+    if (
+      itemInput.selectedIndexProduk === "" ||
+      !itemInput.qty ||
+      !itemInput.hargaCustom
+    ) {
+      return alert("Silakan lengkapi pilihan produk dan volume kuantitas!");
     }
 
-    setQtyInput("");
+    const prod = produkGudang[itemInput.selectedIndexProduk];
+    const kuantitas = parseInt(itemInput.qty) || 0;
+    const hargaJual = parseInt(itemInput.hargaCustom) || 0;
+
+    if (kuantitas <= 0 || hargaJual <= 0) return;
+
+    // Gabungkan kuantitas kalo produk yang dipilih sudah ada di kertas nota
+    const itemEksisIdx = itemsKeranjang.findIndex(
+      (item) => item.sku === prod.sku,
+    );
+    if (itemEksisIdx !== -1) {
+      setItemsKeranjang((prev) =>
+        prev.map((item, idx) =>
+          idx === itemEksisIdx
+            ? {
+                ...item,
+                qty: item.qty + kuantitas,
+                total: (item.qty + kuantitas) * item.harga,
+              }
+            : item,
+        ),
+      );
+    } else {
+      setItemsKeranjang((prev) => [
+        ...prev,
+        {
+          sku: prod.sku,
+          nama: prod.nama,
+          qty: kuantitas,
+          harga: hargaJual,
+          total: kuantitas * hargaJual,
+        },
+      ]);
+    }
+
+    // Reset input produk form
+    setItemInput({ selectedIndexProduk: "", qty: "", hargaCustom: "" });
   };
 
   // HAPUS BARIS PRODUK DARI TABEL KERTAS
-  const handleHapusItem = (id) => {
-    setItemsKeranjang((prev) => prev.filter((item) => item.id !== id));
+  const handleHapusItem = (sku) => {
+    setItemsKeranjang((prev) => prev.filter((item) => item.sku !== sku));
   };
 
-  // 6. HITUNG NOTA (SUBTOTAL & GRAND TOTAL)
+  // SIMPAN CUSTOMER BARU KE LIST DROPDOWN
+  const handleSimpanCustomerBaru = () => {
+    if (namaCustomerBaru.trim() !== "") {
+      setDaftarCustomer((prev) => [...prev, namaCustomerBaru]);
+      setFormData((prev) => ({ ...prev, pelanggan: namaCustomerBaru }));
+      setIsTambahCustomerBaru(false);
+      setNamaCustomerBaru("");
+    }
+  };
+
+  // =========================================================
+  // 3. RUMUSAN REAL-TIME HITUNG NOTA
+  // =========================================================
   const hitungSubtotal = useMemo(() => {
     return itemsKeranjang.reduce((sum, item) => sum + item.total, 0);
   }, [itemsKeranjang]);
 
   const hitungGrandTotal = useMemo(() => {
-    const biayaKirim = parseInt(ongkirInput) || 0;
-    return hitungSubtotal + biayaKirim;
-  }, [hitungSubtotal, ongkirInput]);
+    return hitungSubtotal + (parseInt(formData.ongkir) || 0);
+  }, [hitungSubtotal, formData.ongkir]);
 
+  // =========================================================
+  // 4. DISPLAY LAYOUT VIEW RENDER
+  // =========================================================
   return (
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300">
       {/* HEADER HALAMAN */}
@@ -85,131 +157,184 @@ export default function InvoiceProforma() {
         <h2 className="text-xl font-bold text-white tracking-wide">
           Invoice Proforma Generator
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Ketik langsung di panel kiri, tampilan draf kertas di kanan akan
-          langsung berubah otomatis tanpa tombol preview.
-        </p>
       </div>
 
-      {/* GRID UTAMA LAYOUT */}
+      {/* GRID UTAMA LAYOUT (IDENTIK COMPONENT POS) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* PANEL KENDALI INPUT LIVE (xl:col-span-4) */}
-        <div className="xl:col-span-4 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4 sticky top-6">
+        <div className="xl:col-span-4 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4 sticky top-6 font-sans">
           <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2">
-            📋 Informasi Tagihan
+            📋 Informasi Customer
           </h3>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
+            {/* Input Seleksi Customer */}
             <div className="col-span-2">
-              <label className="block text-gray-400 mb-1">
-                Nama Customer / Instansi
-              </label>
-              <input
-                type="text"
-                value={customer}
-                onChange={(e) => setCustomer(e.target.value)}
-                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold focus:border-emerald-500 focus:outline-none text-[11px]"
-              />
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-gray-400">Customer</label>
+                <button
+                  type="button"
+                  onClick={() => setIsTambahCustomerBaru(!isTambahCustomerBaru)}
+                  className="text-[10px] text-emerald-400 hover:underline"
+                >
+                  {isTambahCustomerBaru ? "← List" : "➕ Baru"}
+                </button>
+              </div>
+
+              {isTambahCustomerBaru ? (
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    placeholder="Nama PT/Toko..."
+                    value={namaCustomerBaru}
+                    onChange={(e) => setNamaCustomerBaru(e.target.value)}
+                    className="flex-1 bg-[#15171c] border border-emerald-500/50 rounded-lg p-2 text-white text-[11px] focus:outline-none font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSimpanCustomerBaru}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 rounded-lg text-[11px] font-bold"
+                  >
+                    OK
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={formData.pelanggan}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pelanggan: e.target.value })
+                  }
+                  className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold text-[11px] cursor-pointer focus:border-blue-500 focus:outline-none"
+                >
+                  {daftarCustomer.map((cust, index) => (
+                    <option key={index} value={cust}>
+                      {cust}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
+
+            {/* Input Alamat Kirim */}
             <div className="col-span-2">
               <label className="block text-gray-400 mb-1">
-                Alamat Tujuan Pengiriman
+                Alamat Pengiriman
               </label>
               <input
                 type="text"
-                value={alamat}
+                placeholder="Jakarta"
                 onChange={(e) => setAlamat(e.target.value)}
-                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white focus:border-emerald-500 focus:outline-none text-[11px]"
+                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold focus:border-blue-500 focus:outline-none text-[11px]"
               />
             </div>
+
+            {/* Nomor Invoice Proforma */}
             <div>
               <label className="block text-gray-400 mb-1">Nomor Invoice</label>
               <input
                 type="text"
-                value={nomorInvoice}
-                onChange={(e) => setNomorInvoice(e.target.value)}
-                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-blue-400 font-mono font-bold focus:border-emerald-500 focus:outline-none text-[11px]"
+                placeholder="54/SCI/6/2026"
+                onChange={(e) =>
+                  setFormData({ ...formData, nomorInvoice: e.target.value })
+                }
+                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-blue-400 font-mono font-bold focus:border-blue-500 focus:outline-none text-[11px]"
               />
             </div>
+
+            {/* Tanggal Terbit Nota */}
             <div>
               <label className="block text-gray-400 mb-1">
                 Tanggal Dokumen
               </label>
               <input
                 type="date"
-                value={tanggal}
-                onChange={(e) => setTanggal(e.target.value)}
-                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white focus:border-emerald-500 focus:outline-none text-[11px]"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-gray-400 mb-1">Jatuh Tempo</label>
-              <input
-                type="text"
-                value={jatuhTempo}
-                onChange={(e) => setJatuhTempo(e.target.value)}
-                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white focus:border-emerald-500 focus:outline-none text-[11px]"
+                value={formData.tanggal}
+                onChange={(e) =>
+                  setFormData({ ...formData, tanggal: e.target.value })
+                }
+                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold focus:border-blue-500 focus:outline-none text-[11px] [color-scheme:dark]"
               />
             </div>
           </div>
 
+          {/* SEC 2: MUAT ARTIKEL BARANG */}
           <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2 pt-2">
-            📦 Transaksi Produk
+            📦 Produk
           </h3>
 
           <div className="space-y-3 text-xs">
             <div>
               <label className="block text-gray-400 mb-1">
-                Pilih Varian Produk
+                Pilih SKU Gudang
               </label>
               <select
-                value={selectedProductIndex}
-                onChange={(e) =>
-                  setSelectedProductIndex(parseInt(e.target.value))
-                }
-                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white focus:border-emerald-500 focus:outline-none text-[11px] cursor-pointer font-medium"
+                value={itemInput.selectedIndexProduk}
+                onChange={(e) => handleProdukSelectChange(e.target.value)}
+                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white focus:border-blue-500 focus:outline-none text-[11px] cursor-pointer font-bold"
               >
-                {mockBarang.map((b, idx) => (
-                  <option key={b.id} value={idx}>
-                    {b.nama} (Rp {b.harga.toLocaleString("id-ID")})
+                <option value="">-- Pilih SKU Gudang --</option>
+                {produkGudang.map((b, idx) => (
+                  <option key={idx} value={idx}>
+                    [{b.sku}] - {b.nama}
                   </option>
                 ))}
               </select>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-gray-400 mb-1">
-                  Volume Kuantitas (Qty)
-                </label>
+                <label className="block text-gray-400 mb-1">Qty</label>
                 <input
                   type="number"
-                  placeholder="Pcs / Kaleng"
-                  value={qtyInput}
-                  onChange={(e) => setQtyInput(e.target.value)}
-                  className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold focus:border-emerald-500 focus:outline-none text-[11px]"
+                  placeholder="0"
+                  value={itemInput.qty}
+                  onChange={(e) =>
+                    setItemInput({ ...itemInput, qty: e.target.value })
+                  }
+                  className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold focus:border-blue-500 focus:outline-none text-[11px]"
                 />
               </div>
               <div>
                 <label className="block text-gray-400 mb-1">
-                  Biaya Kirim / Ongkir (Rp)
+                  Harga Jual (Rp)
                 </label>
                 <input
                   type="number"
-                  value={ongkirInput === 0 ? "" : ongkirInput}
-                  placeholder="Rp 0"
+                  placeholder="Rp"
+                  value={itemInput.hargaCustom}
                   onChange={(e) =>
-                    setOngkirInput(parseInt(e.target.value) || 0)
+                    setItemInput({ ...itemInput, hargaCustom: e.target.value })
                   }
-                  className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white focus:border-emerald-500 focus:outline-none text-[11px]"
+                  className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold focus:border-blue-500 focus:outline-none text-[11px]"
                 />
               </div>
             </div>
+
+            {/* Input Biaya Pengiriman Ongkir */}
+            <div>
+              <label className="block text-gray-400 mb-1">
+                Biaya Pengiriman / Ongkir (Rp)
+              </label>
+              <input
+                type="number"
+                value={formData.ongkir === 0 ? "" : formData.ongkir}
+                placeholder="0"
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    ongkir: parseInt(e.target.value) || 0,
+                  })
+                }
+                className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-emerald-400 font-mono font-bold focus:border-blue-500 focus:outline-none text-[11px]"
+              />
+            </div>
+
             <button
               type="button"
               onClick={handleTambahProduk}
               className="w-full bg-[#242731] hover:bg-[#2d313e] text-emerald-400 font-bold py-2 rounded-lg border border-emerald-900/30 transition-all active:scale-95 text-[11px] uppercase tracking-wide shadow-md"
             >
-              ➕ Masukkan Produk ke Kertas Nota
+              ➕ Tambah Produk ke INVOICE
             </button>
           </div>
 
@@ -217,16 +342,16 @@ export default function InvoiceProforma() {
             <button
               type="button"
               onClick={() =>
-                alert("Mengirim data proforma final ke Django server...")
+                alert("Mengirim payload proforma utuh ke Django DRF...")
               }
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition-all shadow-lg shadow-emerald-950/40 active:scale-95 text-xs uppercase tracking-wider"
             >
-              💾 Cetak & Simpan Ke Database (Backend)
+              💾 Cetak & Simpan
             </button>
           </div>
         </div>
 
-        {/* PANEL LIVE PREVIEW KERTAS INVOICE (xl:col-span-8 ) */}
+        {/* PANEL LIVE PREVIEW KERTAS INVOICE (UKURAN TETAP A4 INDONESIA) */}
         <div className="xl:col-span-8 w-full max-w-[210mm] min-h-[297mm] mx-auto bg-white text-gray-800 rounded-xl p-10 shadow-2xl flex flex-col justify-between font-sans border border-gray-200 box-border">
           <div>
             {/* Kop Surat Perusahaan */}
@@ -243,10 +368,10 @@ export default function InvoiceProforma() {
               </div>
               <div className="text-right">
                 <h2 className="text-base font-extrabold text-gray-900 uppercase tracking-wider">
-                  SALES INVOICE
+                  PROFORMA INVOICE
                 </h2>
                 <p className="text-xs font-mono text-gray-700 font-bold mt-1 bg-gray-100 px-2 py-0.5 rounded inline-block">
-                  Nomor: {nomorInvoice || "-"}
+                  Nomor: {formData.nomorInvoice || "-"}
                 </p>
               </div>
             </div>
@@ -258,7 +383,7 @@ export default function InvoiceProforma() {
                   Tagihan Kepada:
                 </p>
                 <p className="font-black text-gray-900 text-sm">
-                  {customer || "Nama Toko / Instansi Belum Diisi"}
+                  {formData.pelanggan || "Nama Toko / Instansi Belum Diisi"}
                 </p>
                 <p className="text-gray-600 text-[11px] mt-0.5 font-medium">
                   {alamat || "Alamat Belum Diisi"}
@@ -267,13 +392,9 @@ export default function InvoiceProforma() {
               <div className="text-right space-y-1 font-semibold text-gray-700">
                 <p>
                   <span className="text-gray-400 font-normal">Tanggal:</span>{" "}
-                  <span className="text-gray-900 font-bold">{tanggal}</span>
-                </p>
-                <p>
-                  <span className="text-gray-400 font-normal">
-                    Jatuh Tempo:
-                  </span>{" "}
-                  <span className="text-gray-900 font-bold">{jatuhTempo}</span>
+                  <span className="text-gray-900 font-bold">
+                    {formData.tanggal}
+                  </span>
                 </p>
               </div>
             </div>
@@ -282,10 +403,11 @@ export default function InvoiceProforma() {
             <table className="w-full text-left my-6 text-xs border-collapse">
               <thead>
                 <tr className="border-b border-gray-900 text-gray-900 font-bold bg-gray-50 text-[11px]">
+                  <th className="py-2.5 px-2 w-24">SKU</th>
                   <th className="py-2.5 px-2">Deskripsi Varian Produk</th>
                   <th className="py-2.5 px-2 text-center w-20">Qty</th>
-                  <th className="py-2.5 px-2 text-right w-32">Harga Satuan</th>
-                  <th className="py-2.5 px-2 text-right w-32">
+                  <th className="py-2.5 px-2 text-right w-28">Harga Satuan</th>
+                  <th className="py-2.5 px-2 text-right w-28">
                     Total Subtotal
                   </th>
                   <th className="py-2.5 px-2 text-center text-red-500 w-10 select-none">
@@ -297,7 +419,7 @@ export default function InvoiceProforma() {
                 {itemsKeranjang.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="5"
+                      colSpan="6"
                       className="py-8 text-center text-gray-400 italic font-medium bg-gray-50/50"
                     >
                       Belum ada muatan barang. Masukkan produk melalui panel
@@ -307,9 +429,12 @@ export default function InvoiceProforma() {
                 ) : (
                   itemsKeranjang.map((row) => (
                     <tr
-                      key={row.id}
+                      key={row.sku}
                       className="hover:bg-gray-50/50 group text-[11px]"
                     >
+                      <td className="py-3 px-2 text-blue-600 font-mono">
+                        {row.sku}
+                      </td>
                       <td className="py-3 px-2 text-gray-900">{row.nama}</td>
                       <td className="py-3 px-2 text-center text-gray-900 font-mono">
                         {row.qty.toLocaleString("id-ID")}
@@ -323,9 +448,9 @@ export default function InvoiceProforma() {
                       <td className="py-3 px-2 text-center select-none">
                         <button
                           type="button"
-                          onClick={() => handleHapusItem(row.id)}
+                          onClick={() => handleHapusItem(row.sku)}
                           className="text-gray-300 hover:text-red-500 font-bold text-xs p-1 transition-colors"
-                          title="Keluarkan dari faktur"
+                          title="Keluarkan item"
                         >
                           ✕
                         </button>
@@ -337,7 +462,7 @@ export default function InvoiceProforma() {
             </table>
           </div>
 
-          {/* SISI BAWAH DOKUMEN PREVIEW */}
+          {/* SISI BAWAH DOKUMEN PREVIEW KERTAS */}
           <div className="border-t border-gray-200 pt-4">
             <div className="flex justify-between items-start">
               {/* Rekening Pembayaran Resmi */}
@@ -349,7 +474,7 @@ export default function InvoiceProforma() {
                 <p className="text-gray-500">a/n PT Solution Corp Indonesia</p>
               </div>
 
-              {/* Ringkasan Biaya Pengiriman & Total Tagihan Hitung Live */}
+              {/* Ringkasan Subtotal, Ongkir, dan Grand Total Jual */}
               <div className="w-64 text-xs space-y-1.5 text-right font-semibold text-gray-600">
                 <div className="flex justify-between">
                   <span>Subtotal Produk:</span>
@@ -360,7 +485,7 @@ export default function InvoiceProforma() {
                 <div className="flex justify-between">
                   <span>Biaya Pengiriman (Ongkir):</span>
                   <span className="text-gray-900 font-bold font-mono">
-                    Rp {(parseInt(ongkirInput) || 0).toLocaleString("id-ID")}
+                    Rp {formData.ongkir.toLocaleString("id-ID")}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm font-black text-gray-900 border-t border-gray-300 pt-2">
@@ -374,7 +499,7 @@ export default function InvoiceProforma() {
               </div>
             </div>
 
-            {/* Baris Tanda Tangan */}
+            {/* Baris Tanda Tangan Proforma */}
             <div className="flex justify-between items-end mt-12">
               <div className="text-[9px] text-gray-400 max-w-xs leading-normal pr-4 italic font-medium">
                 Dokumen ini diterbitkan secara otomatis oleh sistem PT Solution

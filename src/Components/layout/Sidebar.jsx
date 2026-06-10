@@ -211,7 +211,11 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
                 >
                   Laporan penjualan
                 </NavLink>
-                <NavLink to="Laporan/Pengeluaran" onClick={handleMobileClick}>
+                <NavLink
+                  to="Laporan/Pengeluaran"
+                  className={linkStyle}
+                  onClick={handleMobileClick}
+                >
                   Laporan pengeluaran
                 </NavLink>
               </div>

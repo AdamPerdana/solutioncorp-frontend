@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 export default function InventoryLog() {
-  // 1. Data Mutasi Stok Gudang
   const [logMutasi, setLogMutasi] = useState([
     {
       id: 1,
@@ -60,10 +59,6 @@ export default function InventoryLog() {
         <h2 className="text-xl font-bold text-white tracking-wide">
           Jurnal Mutasi Stok (Log)
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Histori rekaman kartu stok otomatis. Melacak setiap barang masuk dari
-          PO Supplier dan barang keluar dari POS Kasir.
-        </p>
       </div>
 
       {/* FILTER SEARCH BAR & DROPDOWN STATUS KANAN */}

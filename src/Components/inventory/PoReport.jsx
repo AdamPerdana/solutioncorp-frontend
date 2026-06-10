@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 
 export default function PoReport() {
-  // 1. DATABASE ARSIP TRANSAKSI PO UTAMA
   const [databasePO] = useState([
     {
       id: 1,
@@ -66,16 +65,15 @@ export default function PoReport() {
     },
   ]);
 
-  // 2. STATE FILTERING (Persis Gambar Kontrol Sistem Anda)
+  // STATE FILTERING
   const [filterTglMulai, setFilterTglMulai] = useState("2026-06-01");
   const [filterTglSelesai, setFilterTglSelesai] = useState("2026-06-30");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatusBayar, setFilterStatusBayar] = useState("Semua Status");
 
-  // State pemicu modal pop-up detail berkas barang
   const [poTerpilih, setPoTerpilih] = useState(null);
 
-  // 3. LOGIKA RUMUSAN FILTERING DATA SECARA REAL-TIME
+  // FILTERING DATA REAL-TIME
   const dataLaporanDisaring = useMemo(() => {
     return databasePO.filter((po) => {
       const cocokTanggal =
@@ -97,7 +95,7 @@ export default function PoReport() {
     filterStatusBayar,
   ]);
 
-  // 4. METRIK SUMMARY CARDS (Disesuaikan khusus kebutuhan PO)
+  // 4. METRIK SUMMARY CARDS
   const ringkasanMetrik = useMemo(() => {
     let totalBelanja = 0;
     let totalUtangTempo = 0;
@@ -127,13 +125,9 @@ export default function PoReport() {
         <h2 className="text-xl font-bold text-white tracking-wide">
           Laporan Pembelian & Restok (PO Report)
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Audit global pengeluaran dana modal belanja bahan baku sterno, status
-          utang tempo, dan logistik vendor.
-        </p>
       </div>
 
-      {/* METRIK SUMMARY CARDS CONTROLLER (SUDAH DISESUAIKAN KHUSUS LOGISTIK/PO) */}
+      {/* METRIK SUMMARY CARDS CONTROLLER  */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-md">
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
@@ -216,13 +210,13 @@ export default function PoReport() {
         </div>
       </div>
 
-      {/* TABEL DATA PO REPORT (KOLOM MUATAN RINGKAS DIAPUS) */}
+      {/* PO REPORT */}
       <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl">
         <div className="overflow-x-auto rounded-lg border border-gray-800/60">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[#15171c]/50 text-gray-400 border-b border-gray-800 font-semibold select-none text-[11px]">
-                <th className="p-3.5 pl-5">Nomor Berkas PO</th>
+                <th className="p-3.5 pl-5">Nomor PO</th>
                 <th className="p-3.5">Tanggal Berkas</th>
                 <th className="p-3.5">Nama Vendor Supplier</th>
                 <th className="p-3.5 text-center">Status</th>
@@ -288,7 +282,6 @@ export default function PoReport() {
         </div>
       </div>
 
-      {/* POP-UP MODAL PENINJAU RINCIAN BARANG PO UTAMA */}
       {poTerpilih && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-gray-800 rounded-2xl w-full max-w-xl p-5 space-y-4 shadow-2xl animate-fadeIn">

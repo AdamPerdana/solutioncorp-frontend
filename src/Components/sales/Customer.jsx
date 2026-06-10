@@ -139,10 +139,6 @@ export default function Customer() {
         <h2 className="text-xl font-bold text-white tracking-wide">
           Database Pelanggan
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Kelola data profil perusahaan, PIC kontak operasional, serta rekaman
-          alamat distribusi pelanggan.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
@@ -208,7 +204,7 @@ export default function Customer() {
               </label>
               <input
                 type="text"
-                placeholder="Contoh: Jakarta Barat, Bekasi, Papua"
+                placeholder="Contoh: Jakarta"
                 value={formCustomer.alamat}
                 onChange={(e) =>
                   setFormCustomer({ ...formCustomer, alamat: e.target.value })
@@ -230,7 +226,7 @@ export default function Customer() {
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">
-              📋 Daftar Rekanan Terdaftar
+              📋 Daftar Pelanggan
             </h3>
 
             <div className="relative w-full sm:max-w-xs">

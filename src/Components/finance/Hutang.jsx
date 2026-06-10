@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 export default function Hutang() {
-  // 1. Data Hutang
   const [daftarHutang, setDaftarHutang] = useState([
     {
       id: 1,
@@ -42,14 +41,11 @@ export default function Hutang() {
   const [hutangAkanDiproses, setHutangAkanDiproses] = useState(null);
   const [hutangAkanDilunasi, setHutangAkanDilunasi] = useState(null);
 
-  // FUNGSI UTAMA: MENGHITUNG SELISIH HARI
   const hitungHariCounter = (tanggalPO, statusHutang) => {
-    if (statusHutang === "Lunas") return "-"; // Kalau sudah lunas, counter tidak perlu berjalan lagi
-
+    if (statusHutang === "Lunas") return "-";
     const tglAwal = new Date(tanggalPO);
-    const tglSekarang = new Date(); // Mengambil waktu riel hari ini
+    const tglSekarang = new Date();
 
-    // Menghitung selisih milidetik lalu dikonversi ke hitungan hari bersih
     const selisihWaktu = tglSekarang.getTime() - tglAwal.getTime();
     const selisihHari = Math.floor(selisihWaktu / (1000 * 3600 * 24));
 
@@ -64,7 +60,6 @@ export default function Hutang() {
     setSortConfig({ key, direction });
   };
 
-  // EKSEKUSI TAHAP 1: STATUS ON PROCESS
   const handleEksekusiProcess = () => {
     if (!hutangAkanDiproses) return;
     setDaftarHutang((prevList) =>
@@ -77,7 +72,6 @@ export default function Hutang() {
     setHutangAkanDiproses(null);
   };
 
-  // EKSEKUSI TAHAP 2: STATUS LUNAS
   const handleEksekusiPelunasanFull = () => {
     if (!hutangAkanDilunasi) return;
     setDaftarHutang((prevList) =>
@@ -90,7 +84,6 @@ export default function Hutang() {
     setHutangAkanDilunasi(null);
   };
 
-  //DATA FILTER & SORTING
   const processedData = React.useMemo(() => {
     let filteredResults = daftarHutang.filter(
       (item) =>
@@ -131,13 +124,7 @@ export default function Hutang() {
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 flex flex-col font-sans">
       {/* HEADER HALAMAN */}
       <div className="pb-4 border-b border-gray-800 mb-6">
-        <h2 className="text-xl font-bold text-white tracking-wide">
-          Buku Hutang Usaha (A/P)
-        </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Verifikasi pembayaran supplier berjenjang dengan deteksi umur nota
-          otomatis (Hari Counter).
-        </p>
+        <h2 className="text-xl font-bold text-white tracking-wide">Hutang</h2>
       </div>
 
       {/* PANELRINGKASAN UTAMA */}

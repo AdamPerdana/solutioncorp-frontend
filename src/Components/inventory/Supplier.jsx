@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
 export default function Supplier() {
-  // 1. Ambil data pemasok dari localStorage saat load awal, jika kosong pakai data contoh
   const [daftarSupplier, setDaftarSupplier] = useState(() => {
     const dataLokal = localStorage.getItem("PT_Solution_Database_Supplier");
     if (dataLokal) return JSON.parse(dataLokal);
@@ -33,7 +32,7 @@ export default function Supplier() {
     ];
   });
 
-  // 2. State Form Input Data Pemasok Baru (Termasuk Rekening)
+  //Form Input Data Pemasok Baru (Termasuk Rekening)
   const [formSupplier, setFormSupplier] = useState({
     nama: "",
     kontak: "",
@@ -42,12 +41,11 @@ export default function Supplier() {
     rekening: "",
   });
 
-  // State Kontrol Pencarian & Modal Pop-up
+  //Pencarian & Modal Pop-up
   const [searchTerm, setSearchTerm] = useState("");
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
-  // 3. Auto-save Perubahan ke LocalStorage khusus Supplier
   useEffect(() => {
     localStorage.setItem(
       "PT_Solution_Database_Supplier",
@@ -55,7 +53,7 @@ export default function Supplier() {
     );
   }, [daftarSupplier]);
 
-  // FUNGSI UTAMA: PICU EDIT (Lempar data ke form kiri)
+  // FUNGSI UTAMA: EDIT
   const handleEditClick = (item) => {
     setFormSupplier({
       nama: item.nama,
@@ -66,7 +64,7 @@ export default function Supplier() {
     });
   };
 
-  // TAHAP 1 SIMPAN: VALIDASI & PICU MODAL KONFIRMASI
+  // TAHAP 1 SIMPAN: VALIDASI & KONFIRMASI
   const handlePicuKonfirmasi = (e) => {
     e.preventDefault();
     if (formSupplier.nama.trim() === "") return;
@@ -86,7 +84,7 @@ export default function Supplier() {
     });
   };
 
-  // TAHAP 2 SIMPAN: EKSEKUSI SIMPAN / OVERWRITE DATA SUPPLIER
+  // TAHAP 2 SIMPAN: SIMPAN / OVERWRITE DATA SUPPLIER
   const handleEksekusiSimpan = () => {
     if (!dataAkanDisimpan) return;
 
@@ -117,7 +115,7 @@ export default function Supplier() {
     setDataAkanDisimpan(null);
   };
 
-  // FUNGSI EKSEKUSI HAPUS SUPPLIER PERMANEN
+  // FUNGSI HAPUS SUPPLIER
   const handleEksekusiHapus = () => {
     if (!dataAkanDihapus) return;
     setDaftarSupplier((prev) =>
@@ -150,17 +148,12 @@ export default function Supplier() {
       {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
-          Database Supplier (Pemasok)
+          Database Supplier
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Kelola data profil produsen vendor, PIC agen bahan baku logam/kimia,
-          rekaman bank transfer, serta lokasi pusat suplai.
-        </p>
       </div>
 
       {/* GRID LAYOUT PROPORSIONAL */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* PANEL KIRI: FORM REGISTRASI SUPPLIER (col-span-3) */}
         <form
           onSubmit={handlePicuKonfirmasi}
           className="xl:col-span-3 bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3.5"
@@ -252,7 +245,7 @@ export default function Supplier() {
             type="submit"
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-[11px] transition-all uppercase tracking-wider shadow-lg shadow-emerald-950/20 active:scale-95"
           >
-            💾 Simpan Data Supplier
+            💾 Tambah Supplier
           </button>
         </form>
 
@@ -260,7 +253,7 @@ export default function Supplier() {
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">
-              📋 Daftar Vendor Mitra Terdaftar
+              📋 Daftar Supplier
             </h3>
 
             <div className="relative w-full sm:max-w-xs">

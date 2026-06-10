@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 
 export default function Biaya() {
-  // 1. Data Riwayat Pengeluaran Operasional
   const [daftarBiaya, setDaftarBiaya] = useState([
     {
       id: 1,
@@ -29,7 +28,6 @@ export default function Biaya() {
     },
   ]);
 
-  // Kategori operasional
   const opsiKategori = [
     "Bensin & Transport",
     "Sewa Gudang",
@@ -40,7 +38,7 @@ export default function Biaya() {
     "Lain-lain",
   ];
 
-  // 2. Form Tambah Biaya Baru
+  // Tambah Biaya Baru
   const [formInput, setFormInput] = useState({
     tanggal: "2026-06-08",
     keterangan: "",
@@ -49,7 +47,7 @@ export default function Biaya() {
     nominal: "",
   });
 
-  // State pencarian dan pengurutan (Sorting)
+  // pencarian dan pengurutan (Sorting)
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({
     key: "tanggal",
@@ -122,12 +120,8 @@ export default function Biaya() {
       {/* HEADER HALAMAN */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
-          Buku Catatan Biaya Operasional
+          Biaya Operasional
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Pencatatan real-time pengeluaran kas internal, utilitas, dan
-          maintenance umum perusahaan.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -141,7 +135,7 @@ export default function Biaya() {
         </div>
         <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-md">
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-            Jumlah Transaksi Alokasi
+            Jumlah Transaksi
           </p>
           <p className="text-xl font-black text-white mt-1">
             {daftarBiaya.length} Pengeluaran
@@ -246,7 +240,7 @@ export default function Biaya() {
             type="submit"
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-[11px] transition-all uppercase tracking-wider shadow-lg shadow-emerald-950/20 active:scale-95"
           >
-            💾 Amankan Catatan Biaya
+            💾 Tambah Catatan Biaya
           </button>
         </form>
 

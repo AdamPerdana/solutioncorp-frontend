@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
 export default function Produk() {
-  // 1. Ambil data produk dari localStorage
   const [daftarProduk, setDaftarProduk] = useState(() => {
     const dataLokal = localStorage.getItem("PT_Solution_Master_Produk");
     if (dataLokal) return JSON.parse(dataLokal);
@@ -25,14 +24,12 @@ export default function Produk() {
     ];
   });
 
-  // 2. State untuk Daftar Satuan Unit (Bisa ditambah/buang & tersimpan di localStorage)
   const [daftarSatuan, setDaftarSatuan] = useState(() => {
     const satuanLokal = localStorage.getItem("PT_Solution_Master_Satuan");
     if (satuanLokal) return JSON.parse(satuanLokal);
-    return ["Pcs", "Kaleng", "Pail", "Kg"]; // Satuan default awal
+    return ["Pcs", "Kaleng", "Pail", "Kg"];
   });
 
-  // State Form Input Data Master Produk
   const [formProduk, setFormProduk] = useState({
     sku: "",
     nama: "",
@@ -40,16 +37,14 @@ export default function Produk() {
     satuan: "Pcs",
   });
 
-  // State pendukung untuk manajemen tambah satuan baru
   const [satuanBaru, setSatuanBaru] = useState("");
   const [tampilkanInputSatuan, setTampilkanInputSatuan] = useState(false);
 
-  // State Pencarian & Modal Pop-up
   const [searchTerm, setSearchTerm] = useState("");
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
-  // 3. Auto-save Perubahan Data ke LocalStorage
+  // Auto-save Perubahan Data ke LocalStorage
   useEffect(() => {
     localStorage.setItem(
       "PT_Solution_Master_Produk",
@@ -64,7 +59,7 @@ export default function Produk() {
     );
   }, [daftarSatuan]);
 
-  // FUNGSI UTAMA: PICU EDIT (Mental balikkan data ke form kiri)
+  //  PICU EDIT
   const handleEditClick = (item) => {
     setFormProduk({
       sku: item.sku,
@@ -74,7 +69,7 @@ export default function Produk() {
     });
   };
 
-  // FUNGSI UTAMA: TAMBAH SATUAN BARU
+  // TAMBAH SATUAN BARU
   const handleTambahSatuan = (e) => {
     e.preventDefault();
     const namaClean = satuanBaru.trim();
@@ -91,7 +86,7 @@ export default function Produk() {
     setTampilkanInputSatuan(false);
   };
 
-  // FUNGSI UTAMA: BUANG/HAPUS SATUAN
+  // BUANG/HAPUS SATUAN
   const handleHapusSatuan = (satuanYangDihapus, e) => {
     e.stopPropagation();
 
@@ -166,7 +161,7 @@ export default function Produk() {
     setDataAkanDisimpan(null);
   };
 
-  // FUNGSI UTAMA: EKSEKUSI HAPUS BARANG PERMANEN
+  // EKSEKUSI HAPUS BARANG PERMANEN
   const handleEksekusiHapus = () => {
     if (!dataAkanDihapus) return;
     setDaftarProduk((prev) =>
@@ -186,12 +181,8 @@ export default function Produk() {
       {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
-          Master Data Produk & Gudang
+          Master Produk
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Pencatatan registrasi varian sterno baru dan kontrol pengaman batas
-          minimum stok fisik.
-        </p>
       </div>
 
       {/* GRID RESPONSIVE LAYOUT */}
@@ -338,7 +329,7 @@ export default function Produk() {
             type="submit"
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-[11px] transition-all uppercase tracking-wider shadow-lg shadow-emerald-950/20 active:scale-95"
           >
-            💾 Simpan Database Master
+            💾 Simpan Produk
           </button>
         </form>
 
@@ -346,7 +337,7 @@ export default function Produk() {
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">
-              📋 Jurnal Ringkasan Gudang
+              📋 Produk
             </h3>
             <div className="relative w-full sm:max-w-xs">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 text-xs">
