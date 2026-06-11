@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function InvoiceProforma() {
-  // =========================================================
-  // 1. DATABASE SEMENTARA (SINKRON TOTAL DENGAN DATA POS)
-  // =========================================================
+  // STATE MANAGEMENT & MASTER DATA INTEGRATION
 
-  // DATA KATALOG PRODUK MASTER
   const [produkGudang] = useState([
     { sku: "STR-01", nama: "Sterno Kaleng Original", harga: 5600 },
     { sku: "STR-02", nama: "Sterno Gel Pxton Kaleng", harga: 6000 },
@@ -13,51 +12,44 @@ export default function InvoiceProforma() {
     { sku: "STR-04", nama: "Sterno Cair Eco Liquid 1L", harga: 35000 },
   ]);
 
-  // DATA MASTER CUSTOMER
-  const [daftarCustomer, setDaftarCustomer] = useState([
-    "-- Pilih Customer --",
-    "CV. Victoria Indo Pratama",
-    "PT. Jaya Sukses Mandiri",
-    "Hotel Nusantara Jakarta",
-  ]);
-
-  // Kontrol tambah customer baru lewat dropdown
+  const [daftarCustomer, setDaftarCustomer] = useState([]);
   const [isTambahCustomerBaru, setIsTambahCustomerBaru] = useState(false);
   const [namaCustomerBaru, setNamaCustomerBaru] = useState("");
+  const [alamat, setAlamat] = useState("");
+  const [itemsKeranjang, setItemsKeranjang] = useState([]);
 
-  // STATE FORM INFRASTRUKTUR NOTA TAGIHAN
   const [formData, setFormData] = useState({
-    nomorInvoice: "54/SCI/6/2026",
-    pelanggan: "-- Pilih Customer --",
-    tanggal: "2026-06-06",
+    nomorInvoice: "",
+    pelanggan: "",
+    tanggal: new Date().toISOString().split("T")[0],
     ongkir: 0,
   });
 
-  const [alamat, setAlamat] = useState("Jakarta Utara");
-
-  // FORM INPUT ITEM MASUK KERANJANG (IDENTIK POS)
   const [itemInput, setItemInput] = useState({
     selectedIndexProduk: "",
     qty: "",
     hargaCustom: "",
   });
 
-  // MULTI-ITEM KERANJANG KERTAS PREVIEW
-  const [itemsKeranjang, setItemsKeranjang] = useState([
-    {
-      sku: "STR-01",
-      nama: "Sterno Kaleng Original",
-      qty: 5000,
-      harga: 5600,
-      total: 28000000,
-    },
-  ]);
+  useEffect(() => {
+    fetchCustomerMaster();
+  }, []);
 
-  // =========================================================
-  // 2. LOGIKA HANDLER & KONTROL INPUT (LOGIKA POS)
-  // =========================================================
+  const fetchCustomerMaster = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/sales/customers/",
+      );
+      if (!response.ok) throw new Error("Gagal sinkronisasi data pelanggan.");
+      const data = await response.json();
+      setDaftarCustomer(data);
+    } catch (error) {
+      console.error("Error Fetching Master Customers:", error);
+    }
+  };
 
-  // DROPDOWN: Isi Otomatis Harga Saat Pilih Produk
+  //  LOGIKA HANDLER & KONTROL INPUT (LOGIKA POS)
+
   const handleProdukSelectChange = (indexStr) => {
     if (indexStr === "") {
       setItemInput({ selectedIndexProduk: "", qty: "", hargaCustom: "" });
@@ -71,7 +63,6 @@ export default function InvoiceProforma() {
     });
   };
 
-  // FUNGSI: MASUKKAN BARANG KE KERANJANG INVOICE
   const handleTambahProduk = (e) => {
     e.preventDefault();
     if (
@@ -79,7 +70,7 @@ export default function InvoiceProforma() {
       !itemInput.qty ||
       !itemInput.hargaCustom
     ) {
-      return alert("Silakan lengkapi pilihan produk dan volume kuantitas!");
+      return toast.warning("Silakan lengkapi pilihan produk dan kuantitas!");
     }
 
     const prod = produkGudang[itemInput.selectedIndexProduk];
@@ -88,7 +79,6 @@ export default function InvoiceProforma() {
 
     if (kuantitas <= 0 || hargaJual <= 0) return;
 
-    // Gabungkan kuantitas kalo produk yang dipilih sudah ada di kertas nota
     const itemEksisIdx = itemsKeranjang.findIndex(
       (item) => item.sku === prod.sku,
     );
@@ -117,28 +107,135 @@ export default function InvoiceProforma() {
       ]);
     }
 
-    // Reset input produk form
     setItemInput({ selectedIndexProduk: "", qty: "", hargaCustom: "" });
+    toast.success("Produk berhasil dimuat ke draf nota.", { autoClose: 1500 });
   };
 
-  // HAPUS BARIS PRODUK DARI TABEL KERTAS
   const handleHapusItem = (sku) => {
     setItemsKeranjang((prev) => prev.filter((item) => item.sku !== sku));
+    toast.info("Item dikeluarkan dari keranjang.", { autoClose: 1500 });
   };
 
-  // SIMPAN CUSTOMER BARU KE LIST DROPDOWN
   const handleSimpanCustomerBaru = () => {
     if (namaCustomerBaru.trim() !== "") {
-      setDaftarCustomer((prev) => [...prev, namaCustomerBaru]);
       setFormData((prev) => ({ ...prev, pelanggan: namaCustomerBaru }));
       setIsTambahCustomerBaru(false);
       setNamaCustomerBaru("");
+      toast.success("Customer sementara berhasil ditentukan.");
     }
   };
 
-  // =========================================================
-  // 3. RUMUSAN REAL-TIME HITUNG NOTA
-  // =========================================================
+  //  ASYNCHRONOUS API MUTATION & ARRAYBUFFER LOGIC
+
+  const handleCetakDanSimpanInvoice = async () => {
+    if (!formData.nomorInvoice || formData.nomorInvoice.trim() === "") {
+      return toast.error("Gagal! Nomor Invoice wajib diisi.");
+    }
+    if (!formData.pelanggan || formData.pelanggan === "") {
+      return toast.error("Gagal! Nama customer belum ditentukan.");
+    }
+    if (itemsKeranjang.length === 0) {
+      return toast.error("Gagal! Keranjang muatan barang masih kosong.");
+    }
+
+    const payload = {
+      nomor_invoice: formData.nomorInvoice,
+      pelanggan: formData.pelanggan,
+      alamat_pengiriman: alamat || "Jakarta Utara",
+      tanggal: formData.tanggal,
+      ongkir: parseInt(formData.ongkir) || 0,
+      items: itemsKeranjang.map((item) => ({
+        sku: item.sku,
+        nama_produk: item.nama,
+        qty: item.qty,
+        harga: item.harga,
+        total: item.total,
+      })),
+    };
+
+    const idToastLoading = toast.loading(
+      "Sedang mengunci database dan memproses file PDF...",
+    );
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/sales/proforma-invoices/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.nomor_invoice) {
+          throw new Error("Nomor Invoice sudah terdaftar! Gunakan nomor lain.");
+        }
+        throw new Error("Gagal memproses dokumen invoice di server.");
+      }
+
+      const buffer = await response.arrayBuffer();
+      const pdfBlob = new Blob([buffer], { type: "application/pdf" });
+
+      if (pdfBlob.size === 0) {
+        throw new Error(
+          "Gagal mengunduh. File biner PDF yang diterima berukuran 0 byte.",
+        );
+      }
+
+      const fileUrl = window.URL.createObjectURL(pdfBlob);
+      const linkDownload = document.createElement("a");
+      linkDownload.href = fileUrl;
+
+      const namaCustomer = formData.pelanggan
+        ? formData.pelanggan.trim()
+        : "Customer";
+      const tanggalInvoice = formData.tanggal || "Tanggal";
+
+      const namaAman = namaCustomer.replace(/[/\\?%*:|"<>]/g, "-");
+      const tanggalAman = tanggalInvoice.replace(/[/\\?%*:|"<>]/g, "-");
+
+      // Hasil keluaran nama file: Proforma Invoice [Nama PT] [Tanggal].pdf
+      linkDownload.download = `Proforma Invoice ${namaAman} ${tanggalAman}.pdf`;
+      // =========================================================
+
+      linkDownload.style.display = "none";
+      document.body.appendChild(linkDownload);
+      linkDownload.click();
+
+      document.body.removeChild(linkDownload);
+      window.URL.revokeObjectURL(fileUrl);
+
+      toast.update(idToastLoading, {
+        render: "Sukses! Transaksi terkunci dan PDF resmi berhasil diunduh.",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      setItemsKeranjang([]);
+      setAlamat("");
+      setFormData({
+        nomorInvoice: "",
+        pelanggan: "",
+        tanggal: new Date().toISOString().split("T")[0],
+        ongkir: 0,
+      });
+    } catch (error) {
+      toast.update(idToastLoading, {
+        render: error.message,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+    }
+  };
+
+  // RUMUSAN REAL-TIME HITUNG NOTA
+
   const hitungSubtotal = useMemo(() => {
     return itemsKeranjang.reduce((sum, item) => sum + item.total, 0);
   }, [itemsKeranjang]);
@@ -147,28 +244,23 @@ export default function InvoiceProforma() {
     return hitungSubtotal + (parseInt(formData.ongkir) || 0);
   }, [hitungSubtotal, formData.ongkir]);
 
-  // =========================================================
-  // 4. DISPLAY LAYOUT VIEW RENDER
-  // =========================================================
   return (
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300">
-      {/* HEADER HALAMAN */}
+      <ToastContainer theme="dark" />
+
       <div className="pb-6 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
           Invoice Proforma Generator
         </h2>
       </div>
 
-      {/* GRID UTAMA LAYOUT (IDENTIK COMPONENT POS) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* PANEL KENDALI INPUT LIVE (xl:col-span-4) */}
         <div className="xl:col-span-4 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4 sticky top-6 font-sans">
           <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2">
             📋 Informasi Customer
           </h3>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
-            {/* Input Seleksi Customer */}
             <div className="col-span-2">
               <div className="flex justify-between items-center mb-1">
                 <label className="text-gray-400">Customer</label>
@@ -206,34 +298,35 @@ export default function InvoiceProforma() {
                   }
                   className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold text-[11px] cursor-pointer focus:border-blue-500 focus:outline-none"
                 >
-                  {daftarCustomer.map((cust, index) => (
-                    <option key={index} value={cust}>
-                      {cust}
+                  <option value="">-- Pilih Customer --</option>
+                  {daftarCustomer.map((cust) => (
+                    <option key={cust.id} value={cust.nama}>
+                      {cust.nama}
                     </option>
                   ))}
                 </select>
               )}
             </div>
 
-            {/* Input Alamat Kirim */}
             <div className="col-span-2">
               <label className="block text-gray-400 mb-1">
                 Alamat Pengiriman
               </label>
               <input
                 type="text"
-                placeholder="Jakarta"
+                value={alamat}
+                placeholder="Masukkan Alamat Tujuan Kirim..."
                 onChange={(e) => setAlamat(e.target.value)}
                 className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-bold focus:border-blue-500 focus:outline-none text-[11px]"
               />
             </div>
 
-            {/* Nomor Invoice Proforma */}
             <div>
               <label className="block text-gray-400 mb-1">Nomor Invoice</label>
               <input
                 type="text"
-                placeholder="54/SCI/6/2026"
+                value={formData.nomorInvoice}
+                placeholder="Contoh: 54/SCI/6/2026"
                 onChange={(e) =>
                   setFormData({ ...formData, nomorInvoice: e.target.value })
                 }
@@ -241,7 +334,6 @@ export default function InvoiceProforma() {
               />
             </div>
 
-            {/* Tanggal Terbit Nota */}
             <div>
               <label className="block text-gray-400 mb-1">
                 Tanggal Dokumen
@@ -257,7 +349,6 @@ export default function InvoiceProforma() {
             </div>
           </div>
 
-          {/* SEC 2: MUAT ARTIKEL BARANG */}
           <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2 pt-2">
             📦 Produk
           </h3>
@@ -310,7 +401,6 @@ export default function InvoiceProforma() {
               </div>
             </div>
 
-            {/* Input Biaya Pengiriman Ongkir */}
             <div>
               <label className="block text-gray-400 mb-1">
                 Biaya Pengiriman / Ongkir (Rp)
@@ -341,9 +431,7 @@ export default function InvoiceProforma() {
           <div className="border-t border-gray-800 pt-3">
             <button
               type="button"
-              onClick={() =>
-                alert("Mengirim payload proforma utuh ke Django DRF...")
-              }
+              onClick={handleCetakDanSimpanInvoice}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition-all shadow-lg shadow-emerald-950/40 active:scale-95 text-xs uppercase tracking-wider"
             >
               💾 Cetak & Simpan
@@ -351,10 +439,8 @@ export default function InvoiceProforma() {
           </div>
         </div>
 
-        {/* PANEL LIVE PREVIEW KERTAS INVOICE (UKURAN TETAP A4 INDONESIA) */}
         <div className="xl:col-span-8 w-full max-w-[210mm] min-h-[297mm] mx-auto bg-white text-gray-800 rounded-xl p-10 shadow-2xl flex flex-col justify-between font-sans border border-gray-200 box-border">
           <div>
-            {/* Kop Surat Perusahaan */}
             <div className="flex justify-between items-start border-b-2 border-gray-200 pb-5">
               <div>
                 <h1 className="text-base font-black text-gray-900 tracking-tight">
@@ -376,7 +462,6 @@ export default function InvoiceProforma() {
               </div>
             </div>
 
-            {/* Info Pihak Penerima Tagihan */}
             <div className="grid grid-cols-2 gap-4 my-6 text-xs">
               <div>
                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">
@@ -399,7 +484,6 @@ export default function InvoiceProforma() {
               </div>
             </div>
 
-            {/* Tabel Data Barang Live Render */}
             <table className="w-full text-left my-6 text-xs border-collapse">
               <thead>
                 <tr className="border-b border-gray-900 text-gray-900 font-bold bg-gray-50 text-[11px]">
@@ -462,10 +546,8 @@ export default function InvoiceProforma() {
             </table>
           </div>
 
-          {/* SISI BAWAH DOKUMEN PREVIEW KERTAS */}
           <div className="border-t border-gray-200 pt-4">
             <div className="flex justify-between items-start">
-              {/* Rekening Pembayaran Resmi */}
               <div className="text-[11px] text-gray-600 space-y-0.5 border border-dashed border-gray-300 p-2.5 rounded-lg bg-gray-50/50 font-medium">
                 <p className="font-bold text-gray-800 text-[10px] uppercase tracking-wide mb-1">
                   Pembayaran via Transfer Bank:
@@ -474,7 +556,6 @@ export default function InvoiceProforma() {
                 <p className="text-gray-500">a/n PT Solution Corp Indonesia</p>
               </div>
 
-              {/* Ringkasan Subtotal, Ongkir, dan Grand Total Jual */}
               <div className="w-64 text-xs space-y-1.5 text-right font-semibold text-gray-600">
                 <div className="flex justify-between">
                   <span>Subtotal Produk:</span>
@@ -499,7 +580,6 @@ export default function InvoiceProforma() {
               </div>
             </div>
 
-            {/* Baris Tanda Tangan Proforma */}
             <div className="flex justify-between items-end mt-12">
               <div className="text-[9px] text-gray-400 max-w-xs leading-normal pr-4 italic font-medium">
                 Dokumen ini diterbitkan secara otomatis oleh sistem PT Solution

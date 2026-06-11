@@ -353,7 +353,7 @@ export default function Customer() {
                             }
                             className="text-gray-500 hover:text-red-400 transition-colors text-xs"
                           >
-                            🗑={""}
+                            🗑
                           </button>
                         </div>
                       </td>
