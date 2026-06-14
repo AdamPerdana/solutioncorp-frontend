@@ -1,38 +1,18 @@
 import React, { useState, useEffect } from "react";
 
 export default function Supplier() {
-  const [daftarSupplier, setDaftarSupplier] = useState(() => {
-    const dataLokal = localStorage.getItem("PT_Solution_Database_Supplier");
-    if (dataLokal) return JSON.parse(dataLokal);
-    return [
-      {
-        id: 1,
-        nama: "PT Kimia Industri Utama",
-        kontak: "Irwan Wijaya",
-        telepon: "081122334455",
-        alamat: "Kawasan Industri Jababeka",
-        rekening: "BCA 8720xxxxxx a/n PT Kimia Industri",
-      },
-      {
-        id: 2,
-        nama: "Pabrik Kaleng Logam Jaya",
-        kontak: "Hendra Gunawan",
-        telepon: "08199887766",
-        alamat: "Tangerang",
-        rekening: "Mandiri 11800xxxxxxx a/n Hendra G",
-      },
-      {
-        id: 3,
-        nama: "PT Kemasan Karton Raya",
-        kontak: "Rian Hidayat",
-        telepon: "085711223344",
-        alamat: "Pulo Gadung, Jakarta Timur",
-        rekening: "-",
-      },
-    ];
-  });
+  // ==========================================================
+  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
+  // ==========================================================
+  // Wadah penyimpanan status and data rekanan selama admin membuka halaman.
 
-  //Form Input Data Pemasok Baru (Termasuk Rekening)
+  // Laci utama penampung seluruh daftar profil data supplier/vendor dari cloud database Django
+  const [daftarSupplier, setDaftarSupplier] = useState([]);
+
+  // Lampu indikator loading data saat browser berkomunikasi dengan server
+  const [loading, setLoading] = useState(true);
+
+  // Object pengunci isi text field inputan pendaftaran maupun edit data supplier
   const [formSupplier, setFormSupplier] = useState({
     nama: "",
     kontak: "",
@@ -41,22 +21,54 @@ export default function Supplier() {
     rekening: "",
   });
 
-  //Pencarian & Modal Pop-up
+  // Penampung keyword teks untuk fitur live search penyaringan data vendor di tabel
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Slot memori pengunci objek data supplier yang lolos validasi form dan siap dikirim ke API Django
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
+
+  // Slot memori pengunci data supplier yang ditargetkan untuk dihapus permanen lewat modal konfirmasi merah
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
-  useEffect(() => {
-    localStorage.setItem(
-      "PT_Solution_Database_Supplier",
-      JSON.stringify(daftarSupplier),
-    );
-  }, [daftarSupplier]);
+  // ==========================================================
+  // [SESI 2: DATA FETCHING & BACKEND SYNC (PIPA INTEGRASI)]
+  // ==========================================================
 
-  // FUNGSI UTAMA: EDIT
+  // Trigger Otomatis: Langsung panggil data master supplier begitu halaman pertama kali dirender
+  useEffect(() => {
+    fetchSupplierDariBackend();
+  }, []);
+
+  // Membuka request jaringan internet ke endpoint suppliers milik Django
+  const fetchSupplierDariBackend = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/inventory/suppliers/",
+      );
+      if (!response.ok)
+        throw new Error("Gagal mengambil data supplier dari server");
+
+      const data = await response.json();
+      // Masukkan paket data dari database langsung ke state laci utama
+      setDaftarSupplier(data);
+    } catch (error) {
+      console.error("Error Fetching Suppliers:", error);
+      alert("Koneksi ke server backend Django terputus!");
+    } finally {
+      // Matikan status loading karena proses pengunduhan data selesai (sukses/gagal)
+      setLoading(false);
+    }
+  };
+
+  // ==========================================================
+  // [SESI 3: FORM CONTROL & VALIDATION (INTERSEPTOR FORM)]
+  // ==========================================================
+
+  // FUNGSI A: Memindahkan data dari baris tabel ke kolom form input kiri saat tombol edit diklik
   const handleEditClick = (item) => {
     setFormSupplier({
       nama: item.nama,
+      // FORM INTERCEPTOR: Jika data di database bernilai default strip "-", kosongkan field agar nyaman diketik ulang
       kontak: item.kontak === "-" ? "" : item.kontak,
       telepon: item.telepon === "-" ? "" : item.telepon,
       alamat: item.alamat === "-" ? "" : item.alamat,
@@ -64,18 +76,22 @@ export default function Supplier() {
     });
   };
 
-  // TAHAP 1 SIMPAN: VALIDASI & KONFIRMASI
+  // FUNGSI B: Validasi and kalkulasi status sebelum memunculkan modal konfirmasi simpan/update data
   const handlePicuKonfirmasi = (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Menahan reload halaman bawaan browser
     if (formSupplier.nama.trim() === "") return;
 
     const targetNama = formSupplier.nama.trim();
-    const isUpdate = daftarSupplier.some(
+
+    // CREATE OR UPDATE DETECTOR: Cek apakah nama supplier yang diinput sudah ada di database (Case-Insensitive)
+    const supplierLama = daftarSupplier.find(
       (item) => item.nama.toLowerCase() === targetNama.toLowerCase(),
     );
 
+    // Kunci data ke state konfirmasi. Jika data opsional dikosongkan kasir, otomatis isi dengan tanda strip "-"
     setDataAkanDisimpan({
-      isUpdate,
+      isUpdate: !!supplierLama, // Jika supplierLama ditemukan bernilai true (PUT), jika tidak ditemukan bernilai false (POST)
+      id: supplierLama ? supplierLama.id : null,
       nama: targetNama,
       kontak: formSupplier.kontak.trim() || "-",
       telepon: formSupplier.telepon.trim() || "-",
@@ -84,57 +100,110 @@ export default function Supplier() {
     });
   };
 
-  // TAHAP 2 SIMPAN: SIMPAN / OVERWRITE DATA SUPPLIER
-  const handleEksekusiSimpan = () => {
+  // ==========================================================
+  // [SESI 4: DATABASE MUTATION (POST, PUT, DELETE)]
+  // ==========================================================
+
+  // FUNGSI A: Prosedur simpan data baru (POST) atau perbarui data master lama (PUT) ke Django
+  const handleEksekusiSimpan = async () => {
     if (!dataAkanDisimpan) return;
 
-    const indexDataLama = daftarSupplier.findIndex(
-      (item) => item.nama.toLowerCase() === dataAkanDisimpan.nama.toLowerCase(),
-    );
+    // Bungkus payload bersih berformat standardisasi database
+    const payload = {
+      nama: dataAkanDisimpan.nama,
+      kontak: dataAkanDisimpan.kontak,
+      telepon: dataAkanDisimpan.telepon,
+      alamat: dataAkanDisimpan.alamat,
+      rekening: dataAkanDisimpan.rekening,
+    };
 
-    if (indexDataLama !== -1) {
-      setDaftarSupplier((prev) =>
-        prev.map((item, idx) =>
-          idx === indexDataLama ? { ...item, ...dataAkanDisimpan } : item,
-        ),
-      );
-    } else {
-      setDaftarSupplier((prev) => [
-        ...prev,
-        { id: Date.now(), ...dataAkanDisimpan },
-      ]);
+    try {
+      if (dataAkanDisimpan.isUpdate) {
+        // --- KONDISI EDIT DATA SUPPLIER (PUT REQUEST) ---
+        const response = await fetch(
+          `http://127.0.0.1:8000/api/inventory/suppliers/${dataAkanDisimpan.id}/`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!response.ok)
+          throw new Error("Gagal memperbarui profil vendor di server");
+
+        const updatedData = await response.json();
+
+        // Perbarui baris data tabel di browser admin secara instan tanpa reload halaman
+        setDaftarSupplier((prev) =>
+          prev.map((item) =>
+            item.id === dataAkanDisimpan.id ? updatedData : item,
+          ),
+        );
+      } else {
+        // --- KONDISI REGISTER SUPPLIER BARU (POST REQUEST) ---
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/inventory/suppliers/",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!response.ok)
+          throw new Error("Gagal mendaftarkan supplier baru ke server");
+
+        const supplierBaru = await response.json();
+        // Gabungkan supplier baru ke baris urutan paling atas di dalam tabel
+        setDaftarSupplier((prev) => [supplierBaru, ...prev]);
+      }
+
+      // RESET FORM: Kembalikan isian semua text field input ke string kosong setelah sukses simpan data
+      setFormSupplier({
+        nama: "",
+        kontak: "",
+        telepon: "",
+        alamat: "",
+        rekening: "",
+      });
+      // Tutup modal pop-up konfirmasi simpan
+      setDataAkanDisimpan(null);
+    } catch (error) {
+      console.error("Error Saving Supplier:", error);
+      alert(error.message);
     }
-
-    setFormSupplier({
-      nama: "",
-      kontak: "",
-      telepon: "",
-      alamat: "",
-      rekening: "",
-    });
-    setDataAkanDisimpan(null);
   };
 
-  // FUNGSI HAPUS SUPPLIER
-  const handleEksekusiHapus = () => {
+  // FUNGSI B: Prosedur eliminasi data master rekanan supplier dari database (DELETE REQUEST)
+  const handleEksekusiHapus = async () => {
     if (!dataAkanDihapus) return;
-    setDaftarSupplier((prev) =>
-      prev.filter((item) => item.id !== dataAkanDihapus.id),
-    );
-    dataLokalSinc(
-      daftarSupplier.filter((item) => item.id !== dataAkanDihapus.id),
-    );
-    setDataAkanDihapus(null);
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/api/inventory/suppliers/${dataAkanDihapus.id}/`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok)
+        throw new Error("Gagal menghapus data supplier dari server");
+
+      // Depak objek data supplier yang didelete dari tampilan array tabel di browser
+      setDaftarSupplier((prev) =>
+        prev.filter((item) => item.id !== dataAkanDihapus.id),
+      );
+      // Tutup modal konfirmasi hapus si merah
+      setDataAkanDihapus(null);
+    } catch (error) {
+      console.error("Error Deleting Supplier:", error);
+      alert(error.message);
+    }
   };
 
-  const dataLokalSinc = (dataBaru) => {
-    localStorage.setItem(
-      "PT_Solution_Database_Supplier",
-      JSON.stringify(dataBaru),
-    );
-  };
-
-  // PROSES PENYARINGAN DATA (SEARCH BAR UTAMA)
+  // ==========================================================
+  // [SESI 5: MULTI-VARIABLE SEARCH FILTER & RENDERING LOGIC]
+  // ==========================================================
+  // ENGINE PENYARINGAN MULTIVARIABEL: Memotong isi tabel secara real-time berdasarkan 4 parameter kecocokan sekaligus
   const filteredData = daftarSupplier.filter(
     (item) =>
       item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -154,6 +223,7 @@ export default function Supplier() {
 
       {/* GRID LAYOUT PROPORSIONAL */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* PANEL KIRI: FORM REGISTRASI */}
         <form
           onSubmit={handlePicuKonfirmasi}
           className="xl:col-span-3 bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3.5"
@@ -245,11 +315,11 @@ export default function Supplier() {
             type="submit"
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-[11px] transition-all uppercase tracking-wider shadow-lg shadow-emerald-950/20 active:scale-95"
           >
-            💾 Tambah Supplier
+            💾 Simpan Supplier
           </button>
         </form>
 
-        {/* PANEL KANAN: MONITORING DATABASE REAL-TIME (col-span-9) */}
+        {/* PANEL KANAN: MONITORING MONITOR TABLE */}
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">
@@ -283,7 +353,16 @@ export default function Supplier() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/50 font-medium text-xs">
-                {filteredData.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="p-8 text-center text-emerald-400 font-semibold bg-[#1a1c23]"
+                    >
+                      🔄 Menghubungkan ke basis data vendor Django...
+                    </td>
+                  </tr>
+                ) : filteredData.length === 0 ? (
                   <tr>
                     <td
                       colSpan="6"
@@ -345,7 +424,7 @@ export default function Supplier() {
         </div>
       </div>
 
-      {/* MODAL POP-UP 1: PERINGATAN SEBELUM SAVE DATA SUPPLIER */}
+      {/* MODAL POP-UP 1: PERINGATAN SEBELUM SAVE (SI AMBER / SI EMERALD) */}
       {dataAkanDisimpan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div
@@ -390,7 +469,7 @@ export default function Supplier() {
               )}
             </div>
 
-            <div className="bg-[#15171c] p-3.5 rounded-lg space-y-2 text-xs border border-gray-800">
+            <div className="bg-[#15171c] p-3.5 rounded-lg space-y-2 text-xs border border-gray-800 font-medium">
               <div className="flex justify-between">
                 <span className="text-gray-500">PIC Kontak:</span>
                 <span className="text-white font-bold">
@@ -435,7 +514,7 @@ export default function Supplier() {
         </div>
       )}
 
-      {/* MODAL POP-UP 2: PERINGATAN SEBELUM HAPUS DATA SUPPLIER */}
+      {/* MODAL POP-UP 2: PERINGATAN SEBELUM HAPUS (SI MERAH) */}
       {dataAkanDihapus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
@@ -451,8 +530,8 @@ export default function Supplier() {
               <span className="text-red-400 font-bold">
                 "{dataAkanDihapus.nama}"
               </span>{" "}
-              ? Tindakan ini akan menghapusnya secara permanen dari laci sistem
-              lokal.
+              ? Tindakan ini akan menghapusnya secara permanen dari sistem
+              database cloud.
             </div>
 
             <div className="flex gap-3 pt-2 text-xs">

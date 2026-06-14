@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from "react";
 
 export default function Customer() {
-  // STATE MANAGEMENT & INITIALIZATION
+  // ==========================================================
+  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
+  // ==========================================================
+  // Wadah penyimpanan data pelanggan dan status UI selama halaman aktif.
 
-  // State utama menampung seluruh data pelanggan dari database
+  // Laci utama menampung seluruh data profil pelanggan dari cloud database Django
   const [daftarCustomer, setDaftarCustomer] = useState([]);
 
-  // State loading untuk mengendalikan sinkronisasi UI saat fetch data sedang berjalan
+  // Saklar loading utama untuk mengendalikan animasi sinkronisasi UI saat fetch data sedang berjalan
   const [loading, setLoading] = useState(true);
 
-  // State object untuk mengontrol data dua arah (two-way binding) di form input
+  // Object state untuk mengontrol data dua arah (two-way binding) di form input registrasi/edit
   const [formCustomer, setFormCustomer] = useState({
     nama: "",
     kontak: "",
@@ -17,19 +20,25 @@ export default function Customer() {
     alamat: "",
   });
 
-  // State pembantu manajemen query pencarian dan penampung data (buffer) sebelum eksekusi modal
+  // State pembantu untuk manajemen kata kunci pencarian (live search) di tabel
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Slot memori pengunci data objek pelanggan yang lolos validasi form dan siap dilempar ke modal konfirmasi
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
+
+  // Slot memori pengunci data pelanggan yang ditargetkan untuk dihapus permanen lewat modal pop-up merah
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
-  // DATA FETCHING & BACKEND INTEGRATION]
+  // ==========================================================
+  // [SESI 2: DATA FETCHING & BACKEND SYNC (ALUR PIPA API)]
+  // ==========================================================
 
-  // Lifecycle hook memicu pengambilan data sesaat setelah komponen berhasil di-mount
+  // Trigger Otomatis: Jalankan pengambilan data sesaat setelah komponen berhasil di-mount pertama kali
   useEffect(() => {
     fetchCustomerDariBackend();
   }, []);
 
-  // Fungsi asynchronous ngambil data master pelanggan menggunakan Fetch API dari endpoint Django REST Framework
+  // Fungsi asynchronous mengambil data master pelanggan menggunakan Fetch API dari rute endpoint Django REST
   const fetchCustomerDariBackend = async () => {
     try {
       const response = await fetch(
@@ -37,42 +46,48 @@ export default function Customer() {
       );
       if (!response.ok) throw new Error("Gagal mengambil data dari server");
       const data = await response.json();
+
+      // Simpan array records pelanggan dari database pusat langsung ke dalam state lokal
       setDaftarCustomer(data);
     } catch (error) {
       console.error("Error Fetching:", error);
       alert("Koneksi ke server backend Django terputus!");
     } finally {
+      // Matikan indikator loading jika proses request data internet telah selesai
       setLoading(false);
     }
   };
 
-  //FORM CONTROL & VALIDATION LOGIC]
+  // ==========================================================
+  // [SESI 3: FORM CONTROL & VALIDATION LOGIC (INTERCEPTOR FORM)]
+  // ==========================================================
 
-  // Fungsi handler melempar data dari baris tabel kembali ke form input (proses edit/update)
+  // FUNGSI A: Handler pelempar data dari baris tabel kembali ke form input kiri (proses edit/update)
   const handleEditClick = (item) => {
     setFormCustomer({
       nama: item.nama,
+      // FORM INTERCEPTOR: Jika data di database bernilai default "-", kosongkan field agar bersih saat diedit
       kontak: item.kontak === "-" ? "" : item.kontak,
       telepon: item.telepon === "-" ? "" : item.telepon,
       alamat: item.alamat === "-" ? "" : item.alamat,
     });
   };
 
-  // Interceptor form validasi input awal dan menentukan apakah aksi berupa data baru (POST) atau pembaruan data (PUT)
+  // FUNGSI B: Validasi input awal dan menentukan status apakah aksi berupa data baru (POST) atau pembaruan data (PUT)
   const handlePicuKonfirmasi = (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Menahan reload halaman bawaan form HTML
     if (formCustomer.nama.trim() === "") return;
 
     const targetNama = formCustomer.nama.trim();
 
-    // Validasi pengecekan duplikasi nama di state lokal untuk menentukan mode operasi
+    // CREATE OR UPDATE DETECTOR: Cek duplikasi nama di state lokal untuk menentukan mode operasi (Case-Insensitive)
     const customerLama = daftarCustomer.find(
       (item) => item.nama.toLowerCase() === targetNama.toLowerCase(),
     );
 
-    // Menyusun payload data terstandarisasi sebelum dilempar ke modal konfirmasi
+    // Menyusun payload data terstandarisasi sebelum dikunci ke modal konfirmasi (jika kosong, paksa beri strip "-")
     setDataAkanDisimpan({
-      isUpdate: !!customerLama,
+      isUpdate: !!customerLama, // Jika customerLama ditemukan bernilai true (PUT), jika tidak ditemukan bernilai false (POST)
       id: customerLama ? customerLama.id : null,
       nama: targetNama,
       kontak: formCustomer.kontak.trim() || "-",
@@ -81,12 +96,15 @@ export default function Customer() {
     });
   };
 
-  // DATABASE MUTATION (POST, PUT, DELETE)]
+  // ==========================================================
+  // [SESI 4: DATABASE MUTATION (POST, PUT, DELETE)]
+  // ==========================================================
 
-  // Fungsi eksekutor mutasi data nyimpan entitas baru atau perbarui entitas lama ke database backend
+  // FUNGSI A: Eksekutor mutasi data menyimpan entitas baru (POST) atau perbarui entitas lama (PUT) ke database
   const handleEksekusiSimpan = async () => {
     if (!dataAkanDisimpan) return;
 
+    // Persiapan paket data bersih sebelum dikirimkan lewat body request JSON
     const payload = {
       nama: dataAkanDisimpan.nama,
       kontak: dataAkanDisimpan.kontak,
@@ -108,8 +126,9 @@ export default function Customer() {
 
         if (!response.ok) throw new Error("Gagal memperbarui data di server");
 
-        // Optimistic UI update: memperbarui state array lokal secara real-time dengan data terbaru dari server
         const updatedData = await response.json();
+
+        // OPTIMISTIC UI UPDATE: Memperbarui baris data tabel lokal secara real-time tanpa reload browser
         setDaftarCustomer((prev) =>
           prev.map((item) =>
             item.id === dataAkanDisimpan.id ? updatedData : item,
@@ -128,12 +147,12 @@ export default function Customer() {
 
         if (!response.ok) throw new Error("Gagal menyimpan pelanggan baru");
 
-        // Memasukkan records data baru dari server ke posisi urutan teratas pada komponen UI
         const customerBaru = await response.json();
+        // Memasukkan record data pelanggan baru dari server langsung ke posisi urutan teratas tabel UI
         setDaftarCustomer((prev) => [customerBaru, ...prev]);
       }
 
-      // Kebijakan pembersihan: form di-reset state modal ditutup setelah operasi berhasil
+      // KEBIJAKAN PEMBERSIHAN: Form di-reset total and state modal konfirmasi ditutup setelah operasi sukses
       setFormCustomer({ nama: "", kontak: "", telepon: "", alamat: "" });
       setDataAkanDisimpan(null);
     } catch (error) {
@@ -142,7 +161,7 @@ export default function Customer() {
     }
   };
 
-  // Fungsi eksekutor untuk menghapus records data secara permanen dari database berdasarkan ID entitas
+  // FUNGSI B: Eksekutor pembuangan data record pelanggan secara permanen dari database (DELETE REQUEST)
   const handleEksekusiHapus = async () => {
     if (!dataAkanDihapus) return;
 
@@ -156,10 +175,11 @@ export default function Customer() {
 
       if (!response.ok) throw new Error("Gagal menghapus data dari server");
 
-      // Melakukan pemotongan (filtering) state array lokal,agar UI langsung sinkron tanpa perlu hit ulang API
+      // REAL-TIME FILTERING: Lakukan pemotongan array lokal agar UI langsung sinkron menghilang tanpa hit ulang API
       setDaftarCustomer((prev) =>
         prev.filter((item) => item.id !== dataAkanDihapus.id),
       );
+      // Tutup modal pop-up konfirmasi merah
       setDataAkanDihapus(null);
     } catch (error) {
       console.error("Error Deleting:", error);
@@ -167,9 +187,10 @@ export default function Customer() {
     }
   };
 
-  // [SESI 5: SEARCH FILTER & RENDERING LOGIC]
-
-  // Fungsi input lokal untuk menyaring baris tabel secara real-time berdasarkan kecocokan string karakter
+  // ==========================================================
+  // [SESI 5: SEARCH FILTER & RENDERING LOGIC (LIVE SEARCH)]
+  // ==========================================================
+  // Melakukan penyaringan baris tabel secara real-time berdasarkan kecocokan parameter nama, kontak, atau alamat
   const filteredData = daftarCustomer.filter(
     (item) =>
       item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -186,7 +207,9 @@ export default function Customer() {
         </h2>
       </div>
 
+      {/* GRID RESPONSIVE LAYOUT */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* PANEL KIRI: FORM REGISTRASI CLIENT */}
         <form
           onSubmit={handlePicuKonfirmasi}
           className="xl:col-span-3 bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3.5"
@@ -266,6 +289,7 @@ export default function Customer() {
           </button>
         </form>
 
+        {/* PANEL KANAN: MONITORING MONITOR TABLE */}
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">
@@ -366,7 +390,7 @@ export default function Customer() {
         </div>
       </div>
 
-      {/* POP-UP : PERINGATAN SEBELUM SAVE DATA CUSTOMER */}
+      {/* POP-UP : PERINGATAN SEBELUM SAVE DATA CUSTOMER (SI AMBER / SI EMERALD) */}
       {dataAkanDisimpan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div
@@ -411,7 +435,7 @@ export default function Customer() {
               )}
             </div>
 
-            <div className="bg-[#15171c] p-3.5 rounded-lg space-y-2 text-xs border border-gray-800">
+            <div className="bg-[#15171c] p-3.5 rounded-lg space-y-2 text-xs border border-gray-800 font-medium">
               <div className="flex justify-between">
                 <span className="text-gray-500">PIC Kontak:</span>
                 <span className="text-white font-bold">
@@ -450,7 +474,7 @@ export default function Customer() {
         </div>
       )}
 
-      {/* POP-UP : PERINGATAN SEBELUM HAPUS DATA CUSTOMER*/}
+      {/* POP-UP : PERINGATAN SEBELUM HAPUS DATA CUSTOMER (SI MERAH) */}
       {dataAkanDihapus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">

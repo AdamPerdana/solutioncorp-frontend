@@ -113,13 +113,6 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
             >
               <span className="mr-2.5 text-sm">⚪</span> Catatan Biaya
             </NavLink>
-            <NavLink
-              to="/finance/hpp"
-              className={linkStyle}
-              onClick={handleMobileClick}
-            >
-              <span className="mr-2.5 text-sm">⚪</span> Master Hpp
-            </NavLink>
           </nav>
         </div>
 

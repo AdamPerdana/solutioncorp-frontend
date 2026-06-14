@@ -22,7 +22,6 @@ import LaporanSales from "./Admin/sales/LaporanSales";
 import Piutang from "./Admin/finance/Piutang";
 import Hutang from "./Admin/finance/Hutang";
 import Biaya from "./Admin/finance/Biaya";
-import Hpp from "./Admin/finance/Hpp";
 
 // Impor Komponen Grup: Inventory
 import InventoryLog from "./Admin/inventory/InventoryLog";
@@ -93,7 +92,6 @@ function App() {
           <Route path="finance/piutang" element={<Piutang />} />
           <Route path="finance/hutang" element={<Hutang />} />
           <Route path="finance/biaya" element={<Biaya />} />
-          <Route path="finance/hpp" element={<Hpp />} />
 
           {/* Modul: Inventory */}
           <Route path="inventory/inventorylog" element={<InventoryLog />} />
