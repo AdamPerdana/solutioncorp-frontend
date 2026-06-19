@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Produk() {
   // ==========================================================
-  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
+  // [ STATE MANAGEMENT & INITIALIZATION ]
   // ==========================================================
-  // Tempat penampungan memori sementara di browser kasir/admin.
 
-  // Laci utama penampung database master produk (SKU, nama, hpp, harga jual, stok aktual) dari Django
   const [daftarProduk, setDaftarProduk] = useState([]);
-
-  // Array lokal penampung opsi varian satuan unit yang bisa dipilih atau ditambah secara dinamis
   const [daftarSatuan, setDaftarSatuan] = useState([
     "Pcs",
     "Kaleng",
@@ -17,10 +16,8 @@ export default function Produk() {
     "Kg",
   ]);
 
-  // Saklar loading utama halaman untuk sinkronisasi database produk
   const [loading, setLoading] = useState(true);
 
-  // Object penampung isi ketikan form input untuk pendaftaran maupun edit produk
   const [formProduk, setFormProduk] = useState({
     sku: "",
     nama: "",
@@ -30,126 +27,96 @@ export default function Produk() {
     hargaJual: "",
   });
 
-  // State penyimpan string sementara saat admin mengetik nama satuan unit baru (misal: "Dus")
   const [satuanBaru, setSatuanBaru] = useState("");
-
-  // Saklar boolean (true/false) untuk memunculkan atau menyembunyikan inputan text satuan baru
   const [tampilkanInputSatuan, setTampilkanInputSatuan] = useState(false);
-
-  // Penampung keyword teks untuk fitur live search pencarian produk di tabel
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Slot pengunci data object produk yang lolos validasi form dan siap dikirim ke database Django
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
-
-  // Slot pengunci data object produk yang ditargetkan untuk dihapus permanen lewat modal merah
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
   // ==========================================================
-  // [SESI 2: DATA FETCHING & BACKEND SYNC (ALUR PIPA API)]
+  // [ DATA FETCHING WITH JWT AUTHORIZATION ]
   // ==========================================================
 
-  // Trigger Otomatis: Langsung tarik data dari backend begitu halaman dimuat pertama kali
   useEffect(() => {
     fetchProdukDariBackend();
   }, []);
 
-  // Membuka koneksi data dengan endpoint inventori milik Django
   const fetchProdukDariBackend = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/inventory/products/",
-      );
-      if (!response.ok)
-        throw new Error("Gagal mengambil data produk dari server");
-
-      const data = await response.json();
-      // Masukkan seluruh array produk dari database langsung ke dalam state
-      setDaftarProduk(data);
+      const data = await apiRequest("/api/inventory/products/");
+      if (data) {
+        setDaftarProduk(data);
+      }
     } catch (error) {
       console.error("Error Fetching Products:", error);
       alert("Koneksi database produk ke server Django terputus!");
     } finally {
-      // Matikan loading animasi jika proses request internet selesai
       setLoading(false);
     }
   };
 
   // ==========================================================
-  // [SESI 3: FORM CONTROL & VALIDATION (LOGIKA KONTROL FORM)]
+  // [ CONTROL & VALIDATION ]
   // ==========================================================
 
-  // FUNGSI A: Memindahkan data dari baris tabel ke form input kiri saat tombol edit diklik
   const handleEditClick = (item) => {
     setFormProduk({
       sku: item.sku,
       nama: item.nama,
-      // Antisipasi dualitas format snake_case backend atau camelCase frontend
-      minStok: item.min_stok ?? item.minStok,
+      minStok: item.min_stok ?? item.minStok ?? "",
       satuan: item.satuan,
       hpp: item.hpp ?? "",
       hargaJual: item.harga_jual ?? item.hargaJual ?? "",
     });
   };
 
-  // FUNGSI B: Menambahkan jenis satuan unit baru ke dalam dropdown select
   const handleTambahSatuan = (e) => {
     e.preventDefault();
     const namaClean = satuanBaru.trim();
     if (namaClean === "") return;
 
-    // Standardisasi Kapitalisasi Huruf: Mengubah teks kasir menjadi berawalan huruf besar (contoh: "pail" -> "Pail")
     const namaFormat =
       namaClean.charAt(0).toUpperCase() + namaClean.slice(1).toLowerCase();
 
-    // Jika jenis satuan belum terdaftar di array, gabungkan varian baru ke dalam list opsi
     if (!daftarSatuan.includes(namaFormat)) {
       setDaftarSatuan([...daftarSatuan, namaFormat]);
-      // Set form input produk agar otomatis langsung memilih satuan yang baru dibuat tadi
       setFormProduk({ ...formProduk, satuan: namaFormat });
     }
     setSatuanBaru("");
-    setTampilkanInputSatuan(false); // Sembunyikan kembali inputan text satuan unit
+    setTampilkanInputSatuan(false);
   };
 
-  // FUNGSI C: Menghapus opsi jenis satuan unit dari daftar menu dropdown select
   const handleHapusSatuan = (satuanYangDihapus, e) => {
-    e.stopPropagation(); // Mencegah klik tombol memicu event luar yang tidak diinginkan
+    e.stopPropagation();
     if (daftarSatuan.length <= 1) {
       alert("Harus ada minimal satu satuan unit di sistem.");
       return;
     }
-    // Buat array baru yang bersih tanpa melibatkan satuan unit yang di-delete
+
     const sisaSatuan = daftarSatuan.filter((s) => s !== satuanYangDihapus);
     setDaftarSatuan(sisaSatuan);
 
-    // Jika satuan yang dihapus kebetulan lagi terpilih di form, kembalikan pilihan form ke index pertama [0]
     if (formProduk.satuan === satuanYangDihapus) {
       setFormProduk({ ...formProduk, satuan: sisaSatuan[0] });
     }
   };
 
-  // FUNGSI D: Menghitung parameter sebelum memunculkan modal konfirmasi simpan/update data
   const handlePicuKonfirmasi = (e) => {
     e.preventDefault();
     if (formProduk.nama.trim() === "" || formProduk.sku.trim() === "") return;
 
     const targetSku = formProduk.sku.trim().toUpperCase();
-
-    // Cek Kunci: Apakah kode SKU yang diketik kasir sudah pernah terdaftar di database?
     const produkLama = daftarProduk.find(
       (item) => item.sku.toUpperCase() === targetSku,
     );
 
-    // Amankan angka stok berjalan agar tidak ter-reset menjadi 0 saat melakukan update data finansial/HPP
     const stokBerjalan = produkLama
       ? (produkLama.stok_aktual ?? produkLama.stokAktual)
       : 0;
     const currentId = produkLama ? produkLama.id : null;
 
-    // Bungkus data manifest ke state konfirmasi untuk dievaluasi oleh admin di layar pop-up
     setDataAkanDisimpan({
-      isUpdate: !!produkLama, // Jika produkLama ditemukan, maka statusnya adalah UPDATE (PUT), jika tidak ada maka POST baru
+      isUpdate: !!produkLama,
       id: currentId,
       sku: targetSku,
       nama: formProduk.nama.trim(),
@@ -162,14 +129,12 @@ export default function Produk() {
   };
 
   // ==========================================================
-  // [SESI 4: DATABASE MUTATION (POST, PUT, DELETE)]
+  // [ DATABASE MUTATION WITH JWT AUTHORIZATION ]
   // ==========================================================
 
-  // FUNGSI A: Prosedur simpan data baru (POST) atau update data master (PUT) ke Django
   const handleEksekusiSimpan = async () => {
     if (!dataAkanDisimpan) return;
 
-    // Persiapan paket data bersih berformat snake_case sesuai standarisasi model Django REST
     const payload = {
       sku: dataAkanDisimpan.sku,
       nama: dataAkanDisimpan.nama,
@@ -179,49 +144,34 @@ export default function Produk() {
       harga_jual: dataAkanDisimpan.harga_jual,
     };
 
-    // KONDISI 1: JALUR UPDATE DATA (PUT REQUEST)
     try {
       if (dataAkanDisimpan.isUpdate) {
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/inventory/products/${dataAkanDisimpan.id}/`,
+        const updatedData = await apiRequest(
+          `/api/inventory/products/${dataAkanDisimpan.id}/`,
           {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           },
         );
 
-        if (!response.ok)
-          throw new Error("Gagal memperbarui master produk di server");
-
-        const updatedData = await response.json();
-
-        // Perbarui baris tabel di layar kasir secara real-time tanpa reload browser
-        setDaftarProduk((prev) =>
-          prev.map((item) =>
-            item.id === dataAkanDisimpan.id ? updatedData : item,
-          ),
-        );
+        if (updatedData) {
+          setDaftarProduk((prev) =>
+            prev.map((item) =>
+              item.id === dataAkanDisimpan.id ? updatedData : item,
+            ),
+          );
+        }
       } else {
-        // KONDISI 2: JALUR PENDAFTARAN PRODUK BARU (POST REQUEST)
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/inventory/products/",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-        );
+        const produkBaru = await apiRequest("/api/inventory/products/", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
 
-        if (!response.ok)
-          throw new Error("Gagal mendaftarkan produk baru ke server");
-
-        const produkBaru = await response.json();
-        // Taruh hasil response data produk baru di baris paling atas array tabel
-        setDaftarProduk((prev) => [produkBaru, ...prev]);
+        if (produkBaru) {
+          setDaftarProduk((prev) => [produkBaru, ...prev]);
+        }
       }
 
-      // RESET FORM: Bersihkan kembali meja input setelah proses simpan berhasil dituntaskan
       setFormProduk({
         sku: "",
         nama: "",
@@ -230,53 +180,48 @@ export default function Produk() {
         hpp: "",
         hargaJual: "",
       });
-      // Tutup modal pop-up konfirmasi simpan
+
       setDataAkanDisimpan(null);
     } catch (error) {
       console.error("Error Saving Product:", error);
-      alert(error.message);
+      alert("Gagal menyimpan data master produk ke server.");
     }
   };
 
-  // FUNGSI B: Prosedur pembuangan data master produk dari database (DELETE REQUEST)
   const handleEksekusiHapus = async () => {
     if (!dataAkanDihapus) return;
 
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/inventory/products/${dataAkanDihapus.id}/`,
-        { method: "DELETE" },
-      );
+      await apiRequest(`/api/inventory/products/${dataAkanDihapus.id}/`, {
+        method: "DELETE",
+      });
 
-      if (!response.ok)
-        throw new Error("Gagal menghapus entitas produk dari server");
-
-      // Depak item yang dihapus dari tampilan array tabel agar menghilang seketika
       setDaftarProduk((prev) =>
         prev.filter((item) => item.id !== dataAkanDihapus.id),
       );
-      // Tutup modal konfirmasi hapus si merah
+
       setDataAkanDihapus(null);
     } catch (error) {
       console.error("Error Deleting Product:", error);
-      alert(error.message);
+      alert("Gagal menghapus entitas produk dari server");
     }
   };
 
   // ==========================================================
-  // [SESI 5: SEARCH FILTER & RENDERING LOGIC (LIVE SEARCH)]
+  // [ SEARCH FILTER & RENDERING ]
   // ==========================================================
-  // useMemo mengunci kalkulasi penyaringan teks agar aplikasi tidak ngelag saat memproses ribuan barang
   const filteredData = useMemo(() => {
     return daftarProduk.filter(
       (item) =>
         item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.sku.toLowerCase().includes(searchTerm.toLowerCase()),
     );
-  }, [daftarProduk, searchTerm]); // Kalkulator pencarian hanya bekerja jika keyword teks berubah atau daftar produk berubah
+  }, [daftarProduk, searchTerm]);
 
   return (
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 flex flex-col font-sans">
+      <ToastContainer theme="dark" />
+
       {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
@@ -536,10 +481,8 @@ export default function Produk() {
                     const currentHargaJual =
                       item.harga_jual ?? item.hargaJual ?? 0;
 
-                    // REAL-TIME FINANCIAL ENGINE: Selisih laba kotor kotor per baris item barang
                     const selisihLabaKotor = currentHargaJual - currentHpp;
 
-                    // Rumus Margin Laba: (Laba Kotor / Harga Jual) * 100
                     const persentaseMargin =
                       currentHargaJual > 0
                         ? ((selisihLabaKotor / currentHargaJual) * 100).toFixed(
@@ -584,7 +527,7 @@ export default function Produk() {
                           <span
                             className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${isStokKritis ? "bg-red-950/60 text-red-400 border-red-900/50" : "bg-emerald-950/60 text-emerald-400 border-emerald-900/50"}`}
                           >
-                            {item.satuan.toUpperCase()}
+                            {(item.satuan || "").toUpperCase()}
                           </span>
                         </td>
                         <td className="p-3.5 text-center pr-5 select-none">
@@ -620,7 +563,7 @@ export default function Produk() {
         </div>
       </div>
 
-      {/* MODAL CONFIRMATION: SAVE/UPDATE (SI AMBER / SI EMERALD) */}
+      {/* MODAL CONFIRMATION: SAVE/UPDATE */}
       {dataAkanDisimpan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div
@@ -645,7 +588,7 @@ export default function Produk() {
                     {dataAkanDisimpan.sku}
                   </span>{" "}
                   sudah terdaftar. Melanjutkan tindakan ini akan memperbarui
-                  nama produk, nilai finansial, dan ambang batas minimum data
+                  nama produk, nilai finansial, and ambang batas minimum data
                   master tersebut.
                 </span>
               ) : (
@@ -707,7 +650,7 @@ export default function Produk() {
         </div>
       )}
 
-      {/* MODAL CONFIRMATION: DELETE (SI MERAH) */}
+      {/* MODAL CONFIRMATION: DELETE */}
       {dataAkanDihapus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">

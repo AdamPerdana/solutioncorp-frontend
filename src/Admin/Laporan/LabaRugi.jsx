@@ -1,80 +1,65 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function LabaRugi() {
-  // 1. DATA MASTER LINKING LINTAS MODUL
-  const [databaseHpp] = useState([
-    { sku: "STR-001", hargaBeli: 3800 },
-    { sku: "STR-002", hargaBeli: 17500 },
-    { sku: "STR-003", hargaBeli: 19000 },
-  ]);
+  // ==========================================================
+  // [ STATE MANAGEMENT FROM LIVE DJANGO ENDPOINT ]
+  // ==========================================================
+  const [dataPenjualan, setDataPenjualan] = useState([]);
+  const [dataBiaya, setDataBiaya] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [transaksiPOS] = useState([
-    {
-      id: 201,
-      sku: "STR-001",
-      qtyTerjual: 1200,
-      totalOmset: 7200000,
-      tanggal: "2026-06-02",
-    },
-    {
-      id: 202,
-      sku: "STR-002",
-      qtyTerjual: 150,
-      totalOmset: 3750000,
-      tanggal: "2026-06-05",
-    },
-  ]);
+  const [filterTglMulai, setFilterTglMulai] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 2)
+      .toISOString()
+      .split("T")[0];
+  });
+  const [filterTglSelesai, setFilterTglSelesai] = useState(
+    new Date().toISOString().split("T")[0],
+  );
 
-  const [catatanBiaya] = useState([
-    {
-      id: 1,
-      kategori: "Bensin & Transport",
-      nominal: 150000,
-      tanggal: "2026-06-08",
-    },
-    {
-      id: 2,
-      kategori: "Utilitas Kantor",
-      nominal: 1250000,
-      tanggal: "2026-06-05",
-    },
-    {
-      id: 3,
-      kategori: "Keperluan Gudang / Packing",
-      nominal: 350000,
-      tanggal: "2026-06-02",
-    },
-  ]);
+  useEffect(() => {
+    fetchDataFinansialServer();
+  }, [filterTglMulai, filterTglSelesai]);
 
-  // 2. STATE CONTROLLER
-  const [filterTglMulai, setFilterTglMulai] = useState("2026-06-01");
-  const [filterTglSelesai, setFilterTglSelesai] = useState("2026-06-30");
+  const fetchDataFinansialServer = async () => {
+    setLoading(true);
+    try {
+      const salesPayload = await apiRequest(
+        `/api/sales/pos-transactions/laba-rugi-data/?start_date=${filterTglMulai}&end_date=${filterTglSelesai}`,
+      );
 
-  // 3. FILTER BERDASARKAN RENTANG TANGGAL
+      const biayaPayload = await apiRequest(
+        `/api/finance/biaya/biaya-operational/?start_date=${filterTglMulai}&end_date=${filterTglSelesai}`,
+      );
+
+      if (salesPayload) setDataPenjualan(salesPayload.transactions || []);
+      if (biayaPayload) setDataBiaya(biayaPayload || []);
+    } catch (error) {
+      console.error("Eror Laba Rugi:", error);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================================
+  // [ REAL-TIME FINANCIAL MATHEMATICS CALCULATION ]
+  // ==========================================================
   const hitungKeuangan = useMemo(() => {
     let omsetPenjualanPOS = 0;
     let totalHppAkumulasi = 0;
-    let totalBebanOperasional = 0;
 
-    // Filter & Hitung Transaksi POS (Omset & HPP)
-    const posTersaring = transaksiPOS.filter(
-      (pos) => pos.tanggal >= filterTglMulai && pos.tanggal <= filterTglSelesai,
-    );
-
-    posTersaring.forEach((pos) => {
-      omsetPenjualanPOS += pos.totalOmset;
-      const dataHpp = databaseHpp.find((h) => h.sku === pos.sku);
-      const modalBeliSatuan = dataHpp ? dataHpp.hargaBeli : 0;
-      totalHppAkumulasi += pos.qtyTerjual * modalBeliSatuan;
+    dataPenjualan.forEach((tx) => {
+      omsetPenjualanPOS += tx.grand_total || 0;
+      totalHppAkumulasi += tx.total_hpp || 0;
     });
 
-    // Filter & Hitung Buku Catatan Biaya
-    const biayaTersaring = catatanBiaya.filter(
-      (b) => b.tanggal >= filterTglMulai && b.tanggal <= filterTglSelesai,
-    );
-
-    totalBebanOperasional = biayaTersaring.reduce(
-      (sum, b) => sum + b.nominal,
+    const totalBebanOperasional = dataBiaya.reduce(
+      (sum, b) => sum + (parseInt(b.nominal) || parseInt(b.jumlah) || 0),
       0,
     );
 
@@ -87,164 +72,165 @@ export default function LabaRugi() {
       labaKotor,
       totalBebanOperasional,
       labaBersih,
-      biayaList: biayaTersaring,
     };
-  }, [
-    transaksiPOS,
-    databaseHpp,
-    catatanBiaya,
-    filterTglMulai,
-    filterTglSelesai,
-  ]);
-
-  const handleCetakLaporan = () => {
-    alert(
-      `Mengekspor draf resmi Laporan Laba Rugi periode ${filterTglMulai} s/d ${filterTglSelesai} ke printer...`,
-    );
-  };
+  }, [dataPenjualan, dataBiaya]);
 
   return (
-    <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 font-sans">
+    <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 font-sans flex flex-col">
+      <ToastContainer theme="dark" />
+
       {/* HEADER HALAMAN */}
       <div className="pb-4 border-b border-gray-800 mb-6">
-        <h2 className="text-xl font-bold text-white tracking-wide">
+        <h2 className="text-xl font-black text-white tracking-wide">
           📊 Laporan Laba Rugi (P&L Statement)
         </h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Otomatisasi rekapan dari sirkulasi transaksi Kasir POS, database
-          master HPP, dan buku biaya operasional.
-        </p>
       </div>
 
-      <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-xs">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="w-full sm:w-auto">
-            <label className="block text-gray-500 mb-1">Mulai Tanggal</label>
+      {/* FILTER BAR PANEL RAPI */}
+      <div className="bg-[#1a1c23] border border-gray-800 rounded-2xl p-4 shadow-xl mb-6 flex flex-col sm:flex-row items-center gap-4 text-xs select-none">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div>
+            <label className="block text-gray-500 mb-1 font-bold">
+              Mulai Tanggal
+            </label>
             <input
               type="date"
               value={filterTglMulai}
               onChange={(e) => setFilterTglMulai(e.target.value)}
-              className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none text-[11px]"
+              className="bg-[#15171c] border border-gray-800 rounded-xl p-2 text-white font-mono focus:outline-none text-[11px] font-bold [color-scheme:dark]"
             />
           </div>
-          <div className="w-full sm:w-auto">
-            <label className="block text-gray-500 mb-1">Sampai Tanggal</label>
+          <span className="text-gray-700 mt-4 font-bold">s/d</span>
+          <div>
+            <label className="block text-gray-500 mb-1 font-bold">
+              Sampai Tanggal
+            </label>
             <input
               type="date"
               value={filterTglSelesai}
               onChange={(e) => setFilterTglSelesai(e.target.value)}
-              className="w-full bg-[#15171c] border border-gray-800 rounded-lg p-2 text-white font-mono focus:outline-none text-[11px]"
+              className="bg-[#15171c] border border-gray-800 rounded-xl p-2 text-white font-mono focus:outline-none text-[11px] font-bold [color-scheme:dark]"
             />
           </div>
         </div>
-
-        {/* Tombol Cetak Dokumen Finansial */}
-        <button
-          type="button"
-          onClick={handleCetakLaporan}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg transition-all active:scale-95 text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20"
-        >
-          🖨️ Cetak Laporan
-        </button>
+        {loading && (
+          <span className="text-xs text-amber-500 font-bold animate-pulse sm:ml-auto">
+            Menyinkronkan data server...
+          </span>
+        )}
       </div>
 
-      {/* LAPORAN LABA RUGI  */}
-      <div className="max-w-2xl mx-auto bg-[#1a1c23] border border-gray-800 rounded-2xl p-8 shadow-2xl space-y-6">
-        {/* KOP NOTA BERKAS */}
-        <div className="text-center border-b border-gray-800 pb-4">
-          <h3 className="text-base font-bold text-white uppercase tracking-wider">
+      {/* TAMPILAN NOTA LABA RUGI OPERASIONAL */}
+      <div className="max-w-2xl mx-auto w-full bg-[#1a1c23] border border-gray-800 rounded-2xl p-6 md:p-8 shadow-2xl space-y-6">
+        {/* KOP DOKUMEN */}
+        <div className="text-center border-b border-gray-800/60 pb-4 select-none">
+          <h3 className="text-base font-black text-white uppercase tracking-wider">
             PT. Solution Corp Indonesia
           </h3>
-          <p className="text-xs text-emerald-400 font-semibold mt-0.5">
-            Laporan Keuangan Laba Rugi Operasional
+          <p className="text-xs text-emerald-400 font-bold mt-0.5">
+            Laporan Rekapitulasi Laba Rugi Operasional
           </p>
-          <p className="text-[10px] text-gray-500 font-mono mt-1">
+          <p className="text-[10px] text-gray-500 font-mono mt-1 font-bold">
             Periode: {filterTglMulai} s/d {filterTglSelesai}
           </p>
         </div>
 
-        {/* ALUR MATRIKS KEUANGAN */}
+        {/* AKUMULASI VALUE JURNAL */}
         <div className="space-y-5 text-xs">
-          {/* SEKTOR 1: PENDAPATAN */}
+          {/* I. PENDAPATAN */}
           <div>
-            <h4 className="font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-800/40 pb-1 text-[11px]">
+            <h4 className="font-black text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-800/40 pb-1 text-[10px] select-none">
               I. PENDAPATAN USAHA
             </h4>
-            <div className="flex justify-between items-center py-1.5 px-2">
-              <span className="text-gray-300">
-                Pendapatan Omset Bersih Kasir (POS)
+            <div className="flex justify-between items-center py-2 px-2 hover:bg-[#15171c]/30 rounded-lg transition-colors">
+              <span className="text-gray-300 font-medium">
+                Total Pendapatan Omset Bersih (POS Loket & Settle MP)
               </span>
-              <span className="font-mono text-white font-semibold">
+              <span className="font-mono text-white font-bold">
                 Rp {hitungKeuangan.omsetPenjualanPOS.toLocaleString("id-ID")}
               </span>
             </div>
-            <div className="flex justify-between items-center py-1.5 px-2 bg-[#15171c] rounded font-bold text-emerald-400">
-              <span>TOTAL PENDAPATAN BERSIH</span>
+            <div className="flex justify-between items-center py-2 px-2 bg-[#15171c] rounded-xl font-black text-emerald-400 border border-emerald-950/20 shadow-inner">
+              <span className="uppercase tracking-wider select-none">
+                TOTAL PENDAPATAN USAHA (A)
+              </span>
               <span className="font-mono">
                 Rp {hitungKeuangan.omsetPenjualanPOS.toLocaleString("id-ID")}
               </span>
             </div>
           </div>
 
-          {/* SEKTOR 2: HPP */}
+          {/* II. HPP MODAL */}
           <div>
-            <h4 className="font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-800/40 pb-1 text-[11px]">
+            <h4 className="font-black text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-800/40 pb-1 text-[10px] select-none">
               II. HARGA POKOK PENJUALAN (HPP)
             </h4>
-            <div className="flex justify-between items-center py-1.5 px-2">
-              <span className="text-gray-300">
-                Akumulasi Beban Pokok Pembelian Bahan Baku
+            <div className="flex justify-between items-center py-2 px-2 hover:bg-[#15171c]/30 rounded-lg transition-colors">
+              <span className="text-gray-300 font-medium">
+                Akumulasi Beban Pokok Pembelian Modal Awal Terjual
               </span>
-              <span className="font-mono text-rose-400">
+              <span className="font-mono text-rose-400 font-bold">
                 Rp {hitungKeuangan.totalHppAkumulasi.toLocaleString("id-ID")}
               </span>
             </div>
-            <div className="flex justify-between items-center py-1.5 px-2 bg-[#15171c] rounded font-bold text-white">
-              <span>TOTAL HARGA POKOK PENJUALAN</span>
+            <div className="flex justify-between items-center py-2 px-2 bg-[#15171c] rounded-xl font-black text-white border border-gray-800/40 shadow-inner">
+              <span className="uppercase tracking-wider select-none">
+                TOTAL HARGA POKOK PENJUALAN (B)
+              </span>
               <span className="font-mono">
                 Rp {hitungKeuangan.totalHppAkumulasi.toLocaleString("id-ID")}
               </span>
             </div>
           </div>
 
-          {/* SEKTOR 3: LABA KOTOR */}
-          <div className="pt-1">
-            <div className="flex justify-between items-center p-3 bg-[#202430]/50 border border-gray-800 rounded-xl font-black text-[13px]">
+          {/* TOTAL LABA KOTOR */}
+          <div className="pt-1 select-none">
+            <div className="flex justify-between items-center p-3.5 bg-[#202430]/50 border border-gray-800 rounded-xl font-black text-[12px] shadow-sm">
               <span className="text-white uppercase tracking-wider">
-                LABA KOTOR (GROSS PROFIT)
+                LABA KOTOR / GROSS PROFIT (A - B)
               </span>
-              <span className="font-mono text-sky-400">
+              <span className="font-mono text-sky-400 font-black">
                 Rp {hitungKeuangan.labaKotor.toLocaleString("id-ID")}
               </span>
             </div>
           </div>
 
-          {/* SEKTOR 4: BIAYA OPERASIONAL */}
+          {/* III. BIAYA OPERASIONAL */}
           <div>
-            <h4 className="font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-800/40 pb-1 text-[11px]">
-              III. BEBAN BIAYA OPERASIONAL
+            <h4 className="font-black text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-800/40 pb-1 text-[10px] select-none">
+              III. BEBAN BIAYA / PENGELUARAN OPERASIONAL
             </h4>
-            <div className="space-y-0.5">
-              {hitungKeuangan.biayaList.length === 0 ? (
-                <div className="text-gray-600 text-center py-2 italic">
-                  Tidak ada pengeluaran kas pada periode ini.
+            <div className="space-y-0.5 max-h-40 overflow-y-auto pr-1">
+              {dataBiaya.length === 0 ? (
+                <div className="text-gray-600 text-center py-3 italic font-medium select-none">
+                  Tidak ada log pengeluaran operasional kas periode ini.
                 </div>
               ) : (
-                hitungKeuangan.biayaList.map((b) => (
+                dataBiaya.map((b, idx) => (
                   <div
-                    key={b.id}
-                    className="flex justify-between items-center py-1 px-2 text-gray-400 hover:bg-[#15171c]/20"
+                    key={b.id || idx}
+                    className="flex justify-between items-center py-1.5 px-2 text-gray-400 hover:bg-[#15171c]/20 rounded-lg font-medium"
                   >
-                    <span>Beban Pengeluaran {b.kategori}</span>
-                    <span className="font-mono">
-                      Rp {b.nominal.toLocaleString("id-ID")}
+                    <span>
+                      Log Pengeluaran:{" "}
+                      {b.kategori || b.keterangan || "Biaya Umum"}
+                    </span>
+                    <span className="font-mono font-bold text-gray-300">
+                      Rp{" "}
+                      {(
+                        parseInt(b.nominal) ||
+                        parseInt(b.jumlah) ||
+                        0
+                      ).toLocaleString("id-ID")}
                     </span>
                   </div>
                 ))
               )}
             </div>
-            <div className="flex justify-between items-center mt-2.5 py-1.5 px-2 bg-[#15171c] rounded font-bold text-rose-400">
-              <span>TOTAL BEBAN OPERASIONAL</span>
+            <div className="flex justify-between items-center mt-3 py-2 px-2 bg-[#15171c] rounded-xl font-black text-rose-400 border border-rose-950/20 shadow-inner">
+              <span className="uppercase tracking-wider select-none">
+                TOTAL BEBAN OPERASIONAL (C)
+              </span>
               <span className="font-mono">
                 Rp{" "}
                 {hitungKeuangan.totalBebanOperasional.toLocaleString("id-ID")}
@@ -252,23 +238,23 @@ export default function LabaRugi() {
             </div>
           </div>
 
-          {/* SEKTOR 5: LABA BERSIH OPERASIONAL FINAL */}
-          <div className="pt-2 border-t border-gray-800">
-            <div className="flex justify-between items-center p-3.5 bg-emerald-950/40 border border-emerald-900/60 rounded-xl font-black text-sm">
-              <span className="text-emerald-400 uppercase tracking-wide">
-                LABA BERSIH BERJALAN (NET PROFIT)
+          {/* IV. NET PROFIT / LABA BERSIH FINAL */}
+          <div className="pt-2 border-t border-gray-800/80">
+            <div className="flex justify-between items-center p-4 bg-emerald-950/40 border border-emerald-900/60 rounded-xl font-black text-xs md:text-sm shadow-xl shadow-emerald-950/10">
+              <span className="text-emerald-400 uppercase tracking-widest">
+                LABA BERSIH OPERASIONAL (NET PROFIT)
               </span>
-              <span className="font-mono text-emerald-400 text-base">
+              <span className="font-mono text-emerald-400 text-base md:text-lg tracking-wide">
                 Rp {hitungKeuangan.labaBersih.toLocaleString("id-ID")}
               </span>
             </div>
           </div>
         </div>
 
-        {/* FOOTER INFORMASI DOKUMEN */}
-        <div className="text-center text-[9px] text-gray-600 border-t border-gray-800/60 pt-4 italic font-medium">
-          Laporan keuangan ini dihasilkan secara otomatis dan terintegrasi penuh
-          berdasarkan hitungan real-time rentang tanggal terfilter.
+        {/* FOOTER INFORMASI */}
+        <div className="text-center text-[9px] text-gray-600 border-t border-gray-800/40 pt-4 italic font-medium select-none">
+          Data ditarik secara terintegrasi otomatis berdasarkan sinkronisasi
+          riwayat transaksi Solution Indonesia.
         </div>
       </div>
     </div>

@@ -6,24 +6,32 @@ import {
   Navigate,
 } from "react-router-dom";
 
-// Impor Komponen Layout, Login dan Dashboard
+// ==========================================================
+// [ GLOBAL LAYOUT & AUTHENTICATION COMPONENTS ]
+// ==========================================================
 import DashboardLayout from "./Admin/layout/DashboardLayout";
 import Login from "./Admin/layout/Login";
 import Dashboard from "./Admin/dashboard/Dashboard";
-import DashboardToko from "./Admin/dashboard/DashboardToko";
 
-// Impor Komponen Grup: Sales
+// ==========================================================
+// [ CORE SUB-MODULES: SALES MODULE ]
+// ==========================================================
 import Customer from "./Admin/sales/Customer";
 import InvoiceProforma from "./Admin/sales/InvoiceProforma";
 import Pos from "./Admin/sales/Pos";
 import LaporanSales from "./Admin/sales/LaporanSales";
+import Marketplace from "./Admin/sales/Marketplace";
 
-// Impor Komponen Grup: Finance
+// ==========================================================
+// [ CORE SUB-MODULES: FINANCE MODULE ]
+// ==========================================================
 import Piutang from "./Admin/finance/Piutang";
 import Hutang from "./Admin/finance/Hutang";
 import Biaya from "./Admin/finance/Biaya";
 
-// Impor Komponen Grup: Inventory
+// ==========================================================
+// [ CORE SUB-MODULES: INVENTORY MODULE ]
+// ==========================================================
 import InventoryLog from "./Admin/inventory/InventoryLog";
 import Produk from "./Admin/inventory/Produk";
 import PurchaseOrder from "./Admin/inventory/PurchaseOrder";
@@ -31,69 +39,87 @@ import Supplier from "./Admin/inventory/Supplier";
 import Stock from "./Admin/inventory/Stock";
 import PoReport from "./Admin/inventory/PoReport";
 
-// Impor Komponen Grup: Laporan
+// ==========================================================
+// [ CORE SUB-MODULES: FINANCIAL REPORT MODULE ]
+// ==========================================================
 import LabaRugi from "./Admin/Laporan/LabaRugi";
 import LaporanPenjualan from "./Admin/Laporan/LaporanPenjualan";
 import LaporanPengeluaran from "./Admin/Laporan/LaporanPengeluaran";
 
-function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [showSplash, setShowSplash] = useState(false);
+// ==========================================================
+// [ CENTRAL NAVIGATION GUARD / PROTECTED ROUTE ]
+// ==========================================================
+function ProtectedRoute({ isLoggedIn, children }) {
+  const token = localStorage.getItem("accessToken");
+  if (!isLoggedIn || !token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
 
-  // transisi berhasil login
+// ==========================================================
+// [ MAIN APPLICATION ENGINE ]
+// ==========================================================
+function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return !!localStorage.getItem("accessToken");
+  });
+
   const handleLoginSuccess = () => {
-    setShowSplash(true);
-    setTimeout(() => {
-      setIsLoggedIn(true);
-      setShowSplash(false);
-    }, 500);
+    setIsLoggedIn(true);
   };
 
-  // Efek Loading
-  if (showSplash) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#1a1c23] text-white animate-pulse">
-        <h1 className="text-3xl font-bold text-emerald-500">Akses Diterima!</h1>
-      </div>
-    );
-  }
-
-  // 2. Proteksi Login
-  if (!isLoggedIn) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    setIsLoggedIn(false);
+  };
 
   return (
     <Router>
       <Routes>
-        {/* DashboardLayout */}
+        {/* GATEWAY KONTROL GATE LOGIN */}
+        <Route
+          path="/login"
+          element={
+            isLoggedIn ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Login onLoginSuccess={handleLoginSuccess} />
+            )
+          }
+        />
+
+        {/* WORKSPACE AREA (TERKUNCI PENUH) */}
         <Route
           path="/"
-          element={<DashboardLayout onLogout={() => setIsLoggedIn(false)} />}
+          element={
+            <ProtectedRoute isLoggedIn={isLoggedIn}>
+              <DashboardLayout onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
         >
+          {/* DEFAULT REDIRECT */}
           <Route index element={<Navigate to="/dashboard" replace />} />
 
-          {/* Halaman Utama Analitik Global */}
+          {/* MAIN DASHBOARD */}
           <Route
             path="dashboard"
-            element={<Dashboard onLogout={() => setIsLoggedIn(false)} />}
+            element={<Dashboard onLogout={handleLogout} />}
           />
 
-          {/*Dashboard Toko */}
-          <Route path="dashboard-toko" element={<DashboardToko />} />
-
-          {/* Modul: Sales  */}
+          {/* SECTION JALUR DATA: SALES */}
           <Route path="sales/customer" element={<Customer />} />
           <Route path="sales/invoice-proforma" element={<InvoiceProforma />} />
           <Route path="sales/pos" element={<Pos />} />
+          <Route path="sales/marketplace" element={<Marketplace />} />
           <Route path="sales/laporan-sales" element={<LaporanSales />} />
 
-          {/* Modul: Finance */}
+          {/* SECTION JALUR DATA: FINANCE */}
           <Route path="finance/piutang" element={<Piutang />} />
           <Route path="finance/hutang" element={<Hutang />} />
           <Route path="finance/biaya" element={<Biaya />} />
 
-          {/* Modul: Inventory */}
+          {/* SECTION JALUR DATA: INVENTORY */}
           <Route path="inventory/inventorylog" element={<InventoryLog />} />
           <Route path="inventory/produk" element={<Produk />} />
           <Route path="inventory/purchase-order" element={<PurchaseOrder />} />
@@ -101,7 +127,7 @@ function App() {
           <Route path="inventory/stock" element={<Stock />} />
           <Route path="inventory/PoReport" element={<PoReport />} />
 
-          {/* Modul: Laporan Penjualan */}
+          {/* SECTION JALUR DATA: LAPORAN AKUNTANSI */}
           <Route path="Laporan/laba-rugi" element={<LabaRugi />} />
           <Route
             path="Laporan/LaporanPenjualan"
@@ -109,7 +135,7 @@ function App() {
           />
           <Route path="laporan/pengeluaran" element={<LaporanPengeluaran />} />
 
-          {/* (404 Page) */}
+          {/* SECTION JALUR DATA: CATCH-ALL 404 ROUTE */}
           <Route
             path="*"
             element={

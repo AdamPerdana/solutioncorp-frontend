@@ -1,115 +1,73 @@
 import React, { useState, useEffect, useMemo } from "react";
-// IMPOR NOTIFIKASI TOAST MODERN
 import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function PurchaseOrder() {
-  // ==========================================================
-  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
-  // ==========================================================
-  // Wadah penyimpanan data sementara selama admin beraktivitas di halaman PO.
-
-  // Katalog master produk gudang yang siap dipilih untuk dimasukkan ke dalam keranjang
   const [produkGudang, setProdukGudang] = useState([]);
-
-  // Daftar master supplier/vendor resmi yang aktif melayani suplai barang
   const [daftarSupplier, setDaftarSupplier] = useState([]);
-
-  // Penampung riwayat aktivitas cetakan purchase order yang diterbitkan khusus hari ini
   const [arsipPO, setArsipPO] = useState([]);
-
-  // Saklar loading utama untuk melacak status sinkronisasi data dari database Django
   const [loading, setLoading] = useState(true);
-
-  // LACI MULTI-ITEM: Menampung daftar belanja barang sementara sebelum dikunci menjadi nota PO resmi
   const [keranjangDraft, setKeranjangDraft] = useState([]);
 
-  // FORM DATA HEADER: Menyimpan informasi surat berupa Nomor PO, Supplier terpilih, dan Tanggal Transaksi
   const [metaPO, setMetaPO] = useState({
     noPO: "",
     supplier: "",
-    tgl: new Date().toISOString().split("T")[0], // Default otomatis mengisi tanggal hari ini (YYYY-MM-DD)
+    tgl: new Date().toISOString().split("T")[0],
   });
 
-  // FORM DATA ITEM: Menampung baris isian barang (Produk, jumlah qty, dan harga beli vendor) yang sedang diketik
   const [itemInput, setItemInput] = useState({
     selectedIndexProduk: "",
     qty: "",
     hargaBeli: "",
   });
 
-  // Teks keyword untuk menyaring daftar pencarian nota PO di tabel arsip bawah
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Slot pengunci data PO utuh (Header + Banyak Item) yang siap dikirim via jaringan internet
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
-
-  // Slot memori penyimpan objek PO yang dipilih admin untuk ditinjau sub-item barangnya di pop-up modal
   const [poTerpilih, setPoTerpilih] = useState(null);
-
-  // Slot pengunci berkas PO yang ditargetkan untuk dihapus permanen lewat modal konfirmasi merah
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
   // ==========================================================
-  // [SESI 2: SINKRONISASI DATABASE & INTEGRASI DJANGO API]
+  // [ DATA FETCHING WITH JWT AUTHORIZATION ]
   // ==========================================================
 
-  // Trigger Otomatis: Ambil data master supplier, katalog barang, dan urutan PO saat halaman dibuka
   useEffect(() => {
     fetchSupplierMaster();
     fetchKatalogProdukGudang();
     fetchHistoriSertaUrutanPO();
   }, []);
 
-  // FUNGSI A: Mengambil daftar nama vendor pemasok dari server
   const fetchSupplierMaster = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/inventory/suppliers/",
-      );
-      if (!response.ok)
-        throw new Error("Gagal memuat master data vendor supplier.");
-      const data = await response.json();
-      setDaftarSupplier(data);
+      const data = await apiRequest("/api/inventory/suppliers/");
+      if (data) setDaftarSupplier(data);
     } catch (error) {
       console.error("Error Fetching Master Suppliers:", error);
     }
   };
 
-  // FUNGSI B: Mengambil katalog komoditas barang untuk referensi auto-harga beli (HPP)
   const fetchKatalogProdukGudang = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/inventory/products/",
-      );
-      if (!response.ok)
-        throw new Error("Gagal memuat katalog komoditas gudang.");
-      const data = await response.json();
-
-      // Mapping data untuk memastikan variabel finansial dan SKU terekam dengan aman
-      const dataDipetakan = data.map((item) => ({
-        id: item.id,
-        sku: item.sku,
-        nama: item.nama,
-        hpp: item.hpp || 0,
-      }));
-      setProdukGudang(dataDipetakan);
+      const data = await apiRequest("/api/inventory/products/");
+      if (data) {
+        const dataDipetakan = data.map((item) => ({
+          id: item.id,
+          sku: item.sku,
+          nama: item.nama,
+          hpp: item.hpp || 0,
+        }));
+        setProdukGudang(dataDipetakan);
+      }
     } catch (error) {
       console.error("Gagal sinkronisasi katalog produk PO:", error);
     }
   };
 
-  // FUNGSI C: Mengambil riwayat PO berjalan yang terbit pada hari ini
   const fetchHistoriSertaUrutanPO = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/inventory/purchase-orders/",
-      );
-      if (response.ok) {
-        const data = await response.json();
-
-        // Standardisasi Bahasa: Konversi snake_case Django menjadi camelCase React
+      const data = await apiRequest("/api/inventory/purchase-orders/");
+      if (data) {
         const dataDipetakan = data.map((item) => ({
           id: item.id,
           noPO: item.nomor_po,
@@ -126,7 +84,6 @@ export default function PurchaseOrder() {
         }));
 
         setArsipPO(dataDipetakan);
-        // Setelah data arsip termuat, hitung nomor PO otomatis untuk transaksi berikutnya
         generateNomorPOOtomatis();
       }
     } catch (error) {
@@ -137,7 +94,6 @@ export default function PurchaseOrder() {
     }
   };
 
-  // FUNGSI D: Menghitung counter urutan nota untuk menyusun format string Nomor PO otomatis
   const generateNomorPOOtomatis = async () => {
     const tglSekarang = new Date();
     const tahun = tglSekarang.getFullYear();
@@ -146,12 +102,10 @@ export default function PurchaseOrder() {
     let jumlahPOBulanIni = 0;
 
     try {
-      // Minta data counter urutan transaksi yang sudah terbit di bulan ini dari database Django
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/inventory/purchase-orders/last-counter/",
+      const resData = await apiRequest(
+        "/api/inventory/purchase-orders/last-counter/",
       );
-      if (response.ok) {
-        const resData = await response.json();
+      if (resData) {
         jumlahPOBulanIni = resData.counter;
       }
     } catch (error) {
@@ -160,10 +114,8 @@ export default function PurchaseOrder() {
 
     const nomorMulai = 1;
     const nomorUrutFinal = nomorMulai + jumlahPOBulanIni;
-    // Format nomor urut menjadi 4 digit konstan berawalan nol (contoh: urutan 3 -> "0003")
     const stringUrutan = String(nomorUrutFinal).padStart(4, "0");
 
-    // Suntik string penomoran otomatis ke form header dokumen
     setMetaPO((prev) => ({
       ...prev,
       noPO: `PO/${tahun}/${bulan}/${stringUrutan}`,
@@ -171,27 +123,23 @@ export default function PurchaseOrder() {
   };
 
   // ==========================================================
-  // [SESI 3: LOGIKA KONTROL FORM INPUT & DROPDOWN]
+  // [ WORKFLOW HANDLERS ]
   // ==========================================================
 
-  // FUNGSI A: Mengatur aksi saat dropdown pilihan produk berubah (Auto-Fill Harga HPP Satuan)
   const handleProdukSelectChange = (indexStr) => {
     if (indexStr === "") {
       setItemInput({ selectedIndexProduk: "", qty: "", hargaBeli: "" });
       return;
     }
 
-    // Ambil data produk terpilih berdasarkan index array katalog gudang
     const prod = produkGudang[indexStr];
     setItemInput({
       selectedIndexProduk: indexStr,
       qty: itemInput.qty || "",
-      // AUTO HARGA: Mengisi inputan harga beli secara otomatis menggunakan nilai HPP dasar barang
       hargaBeli: prod.hpp ? prod.hpp.toString() : "0",
     });
   };
 
-  // FUNGSI B: Memasukkan barang dari form input ke dalam list draf keranjang sementara
   const handleTambahKeKeranjang = (e) => {
     e.preventDefault();
     if (
@@ -208,13 +156,11 @@ export default function PurchaseOrder() {
 
     if (kuantitas <= 0 || harga <= 0) return;
 
-    // REKONSILIASI ITEM KEMBAR: Cek apakah produk dengan SKU tersebut sudah ada di keranjang?
     const itemEksisIdx = keranjangDraft.findIndex(
       (item) => item.sku === prod.sku,
     );
 
     if (itemEksisIdx !== -1) {
-      // Jika SKU sudah ada, cukup tambahkan jumlah kuantitas lamanya dengan kuantitas inputan baru
       setKeranjangDraft((prev) =>
         prev.map((item, idx) =>
           idx === itemEksisIdx
@@ -227,7 +173,6 @@ export default function PurchaseOrder() {
         ),
       );
     } else {
-      // Jika SKU benar-benar baru, daftarkan baris objek baru ke dalam list array keranjang
       setKeranjangDraft((prev) => [
         ...prev,
         {
@@ -240,65 +185,19 @@ export default function PurchaseOrder() {
       ]);
     }
 
-    // Kosongkan kembali form input barang agar siap mengetik item selanjutnya
     setItemInput({ selectedIndexProduk: "", qty: "", hargaBeli: "" });
     toast.success("Barang dimuat ke draf purchase order.", { autoClose: 1500 });
   };
 
-  // FUNGSI C: Membuang satu baris barang dari daftar draf keranjang belanja
   const handleHapusItemDraft = (sku) => {
     setKeranjangDraft((prev) => prev.filter((item) => item.sku !== sku));
     toast.info("Item dikeluarkan dari draf PO.", { autoClose: 1500 });
   };
 
-  // KALKULATOR TOTAL SEMENTARA: Menghitung akumulasi nilai belanja draf keranjang secara real-time
   const grandTotalDraft = useMemo(() => {
     return keranjangDraft.reduce((sum, item) => sum + item.total, 0);
   }, [keranjangDraft]);
 
-  // FUNGSI D: Menghapus berkas transaksi purchase order dari cloud database (DELETE REQUEST)
-  const handleEksekusiHapus = async () => {
-    if (!dataAkanDihapus) return;
-
-    // Nyalakan teks animasi loading di toast notifikasi
-    const idToastDelete = toast.loading(
-      `Sedang menghancurkan berkas faktur PO ${dataAkanDihapus.noPO}...`,
-    );
-
-    try {
-      // Encode URL agar karakter string khusus seperti garis miring (/) pada nomor PO tidak merusak rute API
-      const nomorPOAman = encodeURIComponent(dataAkanDihapus.noPO);
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/inventory/purchase-orders/delete-by-po/?po=${nomorPOAman}`,
-        { method: "DELETE" },
-      );
-
-      if (!response.ok)
-        throw new Error("Gagal mematikan transaksi PO di server.");
-
-      // Ubah status loading toast menjadi status sukses terhapus
-      toast.update(idToastDelete, {
-        render: `Sukses! Arsip faktur PO ${dataAkanDihapus.noPO} berhasil dilenyapkan.`,
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
-
-      // Tutup modal pop-up dan segarkan data tabel arsip
-      setDataAkanDihapus(null);
-      setPoTerpilih(null);
-      fetchHistoriSertaUrutanPO();
-    } catch (error) {
-      toast.update(idToastDelete, {
-        render: error.message,
-        type: "error",
-        isLoading: false,
-        autoClose: 4000,
-      });
-    }
-  };
-
-  // FUNGSI E: Melakukan validasi kelengkapan form sebelum memicu pop-up konfirmasi simpan
   const handlePicuKonfirmasi = () => {
     if (
       metaPO.noPO.trim() === "" ||
@@ -310,7 +209,6 @@ export default function PurchaseOrder() {
       );
     }
 
-    // Bungkus data header dan multi-item ke format standardisasi payload Django
     setDataAkanDisimpan({
       nomor_po: metaPO.noPO.trim().toUpperCase(),
       supplier: metaPO.supplier,
@@ -327,10 +225,47 @@ export default function PurchaseOrder() {
   };
 
   // ==========================================================
-  // [SESI 4: EKSEKUSI MUTASI & LOGIKA ARRAYBUFFER PDF]
+  // [ DATABASE MUTATION WITH JWT AUTHORIZATION ]
   // ==========================================================
 
-  // FUNGSI UTAMA: Menyimpan data PO baru ke server sekaligus mengonversi data biner menjadi file PDF
+  const handleEksekusiHapus = async () => {
+    if (!dataAkanDihapus) return;
+
+    const idToastDelete = toast.loading(
+      `Sedang menghancurkan berkas faktur PO ${dataAkanDihapus.noPO}...`,
+    );
+
+    try {
+      const data = await apiRequest(
+        "/api/inventory/purchase-orders/delete-by-po/",
+        {
+          method: "DELETE",
+          body: JSON.stringify({ po: dataAkanDihapus.noPO }),
+        },
+      );
+
+      if (data) {
+        toast.update(idToastDelete, {
+          render: `Sukses! Arsip faktur PO ${dataAkanDihapus.noPO} berhasil dilenyapkan.`,
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
+        setDataAkanDihapus(null);
+        setPoTerpilih(null);
+        fetchHistoriSertaUrutanPO();
+      }
+    } catch (error) {
+      toast.update(idToastDelete, {
+        render: "Gagal mematikan transaksi PO di server.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+    }
+  };
+
   const handleEksekusiSimpan = async () => {
     if (!dataAkanDisimpan) return;
 
@@ -339,16 +274,20 @@ export default function PurchaseOrder() {
     );
 
     try {
+      // Menggunakan fetch manual khusus karena perlu mengolah response arrayBuffer blob dokumen PDF
+      const token = localStorage.getItem("accessToken");
       const response = await fetch(
         "http://127.0.0.1:8000/api/inventory/purchase-orders/",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify(dataAkanDisimpan),
         },
       );
 
-      // Tangani validasi error khusus dari backend jika nomor PO kedapatan duplikat/sudah terkunci
       if (!response.ok) {
         const errRes = await response.json().catch(() => ({}));
         if (errRes.nomor_po) {
@@ -357,9 +296,7 @@ export default function PurchaseOrder() {
         throw new Error("Gagal mengamankan nota Purchase Order ke server.");
       }
 
-      // LOGIKA BINER (STREAM DOWNLOAD): Menerima kiriman output data mentah PDF dari Django REST
       const buffer = await response.arrayBuffer();
-      // Konversi data buffer biner menjadi Blob bertipe aplikasi PDF resmi
       const pdfBlob = new Blob([buffer], { type: "application/pdf" });
 
       if (pdfBlob.size === 0) {
@@ -368,12 +305,10 @@ export default function PurchaseOrder() {
         );
       }
 
-      // Prosedur Virtual Download: Membuat link download samaran di memori browser lalu mengkliknya otomatis
       const fileUrl = window.URL.createObjectURL(pdfBlob);
       const linkDownload = document.createElement("a");
       linkDownload.href = fileUrl;
 
-      // Bersihkan string nama supplier dari simbol-simbol ilegal yang dilarang oleh sistem operasi file Windows/Mac
       const namaVendor = dataAkanDisimpan.supplier.replace(
         /[/\\?%*:|"<>]/g,
         "-",
@@ -381,22 +316,19 @@ export default function PurchaseOrder() {
       linkDownload.download = `PO ${dataAkanDisimpan.nomor_po} ${namaVendor}.pdf`;
       linkDownload.style.display = "none";
       document.body.appendChild(linkDownload);
-      linkDownload.click(); // Trigger klik download file otomatis
+      linkDownload.click();
 
-      // Bersihkan kembali sisa sampah link tautan memori setelah file sukses terunduh
       document.body.removeChild(linkDownload);
       window.URL.revokeObjectURL(fileUrl);
 
-      // Perbarui notifikasi status menjadi sukses terbit
       toast.update(idToastPO, {
         render:
-          "Sukses! Purchase Order berhasil diterbitkan and file PDF terunduh.",
+          "Sukses! Purchase Order berhasil diterbitkan dan file PDF terunduh.",
         type: "success",
         isLoading: false,
         autoClose: 3000,
       });
 
-      // Bersihkan seluruh meja draf keranjang kerja karena transaksi telah resmi dituntaskan
       setKeranjangDraft([]);
       setMetaPO({
         noPO: "",
@@ -405,7 +337,6 @@ export default function PurchaseOrder() {
       });
       setDataAkanDisimpan(null);
 
-      // Segarkan isi tabel arsip berjalan
       fetchHistoriSertaUrutanPO();
     } catch (error) {
       toast.update(idToastPO, {
@@ -417,7 +348,6 @@ export default function PurchaseOrder() {
     }
   };
 
-  // ENGINE PENYARINGAN TEKS: Menyaring isi tabel arsip PO harian berdasarkan nomor PO atau nama supplier
   const filteredArsip = arsipPO.filter(
     (item) =>
       item.noPO.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -428,16 +358,13 @@ export default function PurchaseOrder() {
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 flex flex-col font-sans">
       <ToastContainer theme="dark" />
 
-      {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
           Purchase Order
         </h2>
       </div>
 
-      {/* GRID RESPONSIVE LAYOUT */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* PANEL KIRI: LOGISTIK INPUT */}
         <div className="xl:col-span-3 space-y-4">
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-gray-800 pb-2">
@@ -550,12 +477,11 @@ export default function PurchaseOrder() {
               type="submit"
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-[11px] transition-all uppercase tracking-wider shadow-lg shadow-emerald-950/20 active:scale-95"
             >
-              ➕ Masukkan Keranjang
+              🌟 Masukkan Keranjang
             </button>
           </form>
         </div>
 
-        {/* KERANJANG */}
         <div className="xl:col-span-9 space-y-5">
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-4">
             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
@@ -637,7 +563,6 @@ export default function PurchaseOrder() {
             )}
           </div>
 
-          {/* ARSIP HISTORI BERJALAN (FILTER HARIAN BY BACKEND) */}
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3">
             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
@@ -721,7 +646,6 @@ export default function PurchaseOrder() {
         </div>
       </div>
 
-      {/* MODAL POP-UP CONFIRM: SIMPAN DATA BARU (SI BLUE) */}
       {dataAkanDisimpan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-blue-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-fadeIn">
@@ -735,7 +659,7 @@ export default function PurchaseOrder() {
               Apakah Anda ingin memvalidasi dokumen{" "}
               <span className="font-mono font-bold text-blue-400">
                 "{dataAkanDisimpan.nomor_po}"
-              </span>
+              </span>{" "}
               ? Data akan dikunci permanen di cloud database Django dan
               mengonversi riwayat pembelian ke berkas cetakan eksternal.
             </div>
@@ -773,11 +697,9 @@ export default function PurchaseOrder() {
         </div>
       )}
 
-      {/* POP-UP MODAL PENINJAU RINCIAN BARANG PURCHASE ORDER */}
       {poTerpilih && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-gray-800 rounded-2xl w-full max-w-xl p-5 space-y-4 shadow-2xl animate-fadeIn">
-            {/* Header Modal */}
             <div className="flex justify-between items-start border-b border-gray-800 pb-3">
               <div>
                 <h3 className="text-sm font-black text-white uppercase tracking-wider">
@@ -796,7 +718,6 @@ export default function PurchaseOrder() {
               </button>
             </div>
 
-            {/* Sub-Header Vendor & Supplier Info */}
             <div className="bg-[#15171c] p-3 rounded-lg border border-gray-800 text-xs space-y-1">
               <div>
                 <span className="text-gray-500 text-[10px] block">
@@ -816,7 +737,6 @@ export default function PurchaseOrder() {
               </div>
             </div>
 
-            {/* Tabel Detail Multi-Item */}
             <div className="overflow-hidden border border-gray-800/80 rounded-lg">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -861,7 +781,6 @@ export default function PurchaseOrder() {
               </table>
             </div>
 
-            {/* Tombol Closing & Aksi Hapus yang memicu Modal Merah */}
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -882,7 +801,6 @@ export default function PurchaseOrder() {
         </div>
       )}
 
-      {/* POP-UP MODAL KONFIRMASI HAPUS PERMANEN (SI MERAH) */}
       {dataAkanDihapus && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-fadeIn">

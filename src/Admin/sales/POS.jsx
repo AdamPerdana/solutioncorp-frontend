@@ -1,31 +1,22 @@
 import React, { useState, useEffect, useMemo } from "react";
-// 🔥 IMPOR NOTIFIKASI TOAST MODERN
 import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function Pos() {
   // ==========================================================
-  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
+  // [STATE MANAGEMENT & INITIALIZATION ]
   // ==========================================================
 
   const [produkGudang, setProdukGudang] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // DATA MASTER CUSTOMER
   const [daftarCustomer, setDaftarCustomer] = useState([]);
   const [isTambahCustomerBaru, setIsTambahCustomerBaru] = useState(false);
   const [namaCustomerBaru, setNamaCustomerBaru] = useState("");
-
-  // STATE UNTUK MENAMPUNG ALAMAT DI REACT
   const [alamat, setAlamat] = useState("");
-
-  // DATABASE ARSIP TRANSAKSI POS (Sesi Berjalan & Database)
   const [arsipPOS, setArsipPOS] = useState([]);
-
-  // KERANJANG DRAFT (MULTI-ITEM): Menampung baris belanjaan barang sebelum dikunci menjadi nota final
   const [cart, setCart] = useState([]);
 
-  // FORM DATA HEADER
   const [formData, setFormData] = useState({
     nomorInvoice: "",
     pelanggan: "",
@@ -37,7 +28,6 @@ export default function Pos() {
     ongkir: 0,
   });
 
-  // FORM DATA ITEM
   const [itemInput, setItemInput] = useState({
     selectedIndexProduk: "",
     qty: "",
@@ -46,12 +36,10 @@ export default function Pos() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
-
-  // 🔥 STATE BARU: Slot pengunci nomor invoice yang ditargetkan untuk dihapus via modal kustom merah
-  const [invoiceAkanDihapus, setInvoiceAkanDihapus] = useState(null);
+  const [invoiceDitinjau, setInvoiceDitinjau] = useState(null);
 
   // ==========================================================
-  // [SESI 2: SINKRONISASI DATABASE & INTEGRASI DJANGO API]
+  // [ SINKRONISASI DATABASE & INTEGRASI DJANGO API]
   // ==========================================================
 
   useEffect(() => {
@@ -62,12 +50,8 @@ export default function Pos() {
 
   const fetchCustomerMaster = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/sales/customers/",
-      );
-      if (!response.ok) throw new Error("Gagal sinkronisasi data pelanggan.");
-      const data = await response.json();
-      setDaftarCustomer(data);
+      const data = await apiRequest("/api/sales/customers/");
+      if (data) setDaftarCustomer(data);
     } catch (error) {
       console.error("Error Fetching Master Customers:", error);
     }
@@ -75,11 +59,8 @@ export default function Pos() {
 
   const fetchHistoriSertaUrutanInvoice = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/sales/pos-transactions/",
-      );
-      if (response.ok) {
-        const data = await response.json();
+      const data = await apiRequest("/api/sales/pos-transactions/");
+      if (data) {
         const dataDipetakan = data.map((item) => ({
           id: item.id,
           nomorInvoice: item.nomor_invoice,
@@ -88,7 +69,15 @@ export default function Pos() {
           metodeBayar: item.metode_bayar,
           status: item.status,
           grandTotal: item.grand_total,
-          items: item.items,
+          alamat: item.alamat || "Melalui Loket Kasir POS Proyek",
+          ongkir: item.ongkir || 0,
+          items: item.items.map((it) => ({
+            sku: it.sku,
+            nama_produk: it.nama_produk,
+            qty: it.qty,
+            harga: it.harga,
+            total: it.total,
+          })),
         }));
         setArsipPOS(dataDipetakan);
         generateNomorInvoiceOtomatis();
@@ -101,21 +90,18 @@ export default function Pos() {
 
   const fetchKatalogProdukGudang = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/inventory/products/",
-      );
-      if (!response.ok)
-        throw new Error("Gagal memuat katalog produk dari database.");
-      const data = await response.json();
-      const dataDipetakan = data.map((item) => ({
-        id: item.id,
-        sku: item.sku,
-        nama: item.nama,
-        harga: item.harga || item.harga_jual || 0,
-        stokAktual: item.stok_aktual ?? item.stokAktual ?? 0,
-        satuan: item.satuan,
-      }));
-      setProdukGudang(dataDipetakan);
+      const data = await apiRequest("/api/inventory/products/");
+      if (data) {
+        const dataDipetakan = data.map((item) => ({
+          id: item.id,
+          sku: item.sku,
+          nama: item.nama,
+          harga: item.harga || item.harga_jual || 0,
+          stokAktual: item.stok_aktual ?? item.stokAktual ?? 0,
+          satuan: item.satuan,
+        }));
+        setProdukGudang(dataDipetakan);
+      }
     } catch (error) {
       console.error("Gagal sinkronisasi katalog produk POS:", error);
     } finally {
@@ -140,11 +126,10 @@ export default function Pos() {
     let jumlahTransaksiBulanIni = 0;
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/sales/pos-transactions/last-counter/",
+      const resData = await apiRequest(
+        "/api/sales/pos-transactions/last-counter/",
       );
-      if (response.ok) {
-        const resData = await response.json();
+      if (resData) {
         jumlahTransaksiBulanIni = resData.counter;
       }
     } catch (error) {
@@ -172,7 +157,7 @@ export default function Pos() {
   };
 
   // ==========================================================
-  // [SESI 3: LOGIKA HANDLER & KONTROL INPUT WORKSPACE (POS)]
+  // [ HANDLER & KONTROL INPUT WORKSPACE (POS)]
   // ==========================================================
 
   const handleProdukSelectChange = (indexStr) => {
@@ -240,12 +225,20 @@ export default function Pos() {
     toast.info("Item dikeluarkan dari keranjang.", { autoClose: 1500 });
   };
 
-  const handleMetodeBayarChange = (metode) => {
+  const handleMetodeBayarChangeDirect = (metode) => {
     if (metode === "TUNAI") {
       setFormData((prev) => ({
         ...prev,
         metodeBayar: "TUNAI",
         status: "Lunas",
+        jatahTempoHari: 0,
+        jatuhTempo: prev.tanggal,
+      }));
+    } else if (metode === "PENDING") {
+      setFormData((prev) => ({
+        ...prev,
+        metodeBayar: "TEMPO/KREDIT",
+        status: "Tempo",
         jatahTempoHari: 0,
         jatuhTempo: prev.tanggal,
       }));
@@ -262,6 +255,15 @@ export default function Pos() {
   };
 
   const handleJatahHariInput = (hari) => {
+    if (hari === "") {
+      setFormData((prev) => ({
+        ...prev,
+        jatahTempoHari: "",
+        jatuhTempo: prev.tanggal,
+      }));
+      return;
+    }
+
     const jumlahHari = parseInt(hari) || 0;
     setFormData((prev) => ({
       ...prev,
@@ -282,47 +284,8 @@ export default function Pos() {
     }
   };
 
-  // 🔥 FUNGSI EKSEKUSI HAPUS SEBENARNYA (Dipanggil dari dalam Modal Merah kustom)
-  const handleEksekusiHapusTransaksi = async () => {
-    if (!invoiceAkanDihapus) return;
-
-    const idToastDelete = toast.loading(
-      `Sedang menghapus faktur ${invoiceAkanDihapus} dari server...`,
-    );
-
-    try {
-      const nomorInvoiceAman = encodeURIComponent(invoiceAkanDihapus);
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/sales/pos-transactions/delete-by-invoice/?invoice=${nomorInvoiceAman}`,
-        { method: "DELETE" },
-      );
-
-      if (!response.ok) {
-        throw new Error("Gagal menghapus transaksi dari database server.");
-      }
-
-      setInvoiceAkanDihapus(null); // Tutup modal merah kustom
-      fetchHistoriSertaUrutanInvoice(); // Muat ulang tabel histori
-
-      toast.update(idToastDelete, {
-        render: `Sukses! Faktur ${nomorInvoiceAman} berhasil dihapus.`,
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
-    } catch (error) {
-      setInvoiceAkanDihapus(null);
-      toast.update(idToastDelete, {
-        render: error.message,
-        type: "error",
-        isLoading: false,
-        autoClose: 4000,
-      });
-    }
-  };
-
   // ==========================================================
-  // [SESI 4: REAL-TIME VALUASI SUB-TOTAL & GRAND TOTAL KASIR]
+  // [ REAL-TIME VALUASI SUB-TOTAL & GRAND TOTAL]
   // ==========================================================
 
   const subtotalCart = useMemo(() => {
@@ -334,7 +297,7 @@ export default function Pos() {
   }, [subtotalCart, formData.ongkir]);
 
   // ==========================================================
-  // [SESI 5: PRE-SAVE VALIDATION & BUNDLING PAYLOAD]
+  // [ PRE-SAVE VALIDATION & BUNDLING PAYLOAD]
   // ==========================================================
 
   const handlePicuKonfirmasi = () => {
@@ -348,6 +311,9 @@ export default function Pos() {
       return toast.error("Gagal! Keranjang belanja kasir masih kosong.");
     }
 
+    const finalHariTempo =
+      formData.jatahTempoHari === "" ? 0 : formData.jatahTempoHari;
+
     setDataAkanDisimpan({
       id: Date.now(),
       nomorInvoice: formData.nomorInvoice.trim().toUpperCase(),
@@ -359,11 +325,12 @@ export default function Pos() {
       ongkir: parseInt(formData.ongkir) || 0,
       grandTotal: grandTotalCart,
       items: cart,
+      jatah_tempo_hari: finalHariTempo,
     });
   };
 
   // ==========================================================
-  // [SESI 6: ASYNCHRONOUS POST MUTATION & STREAM BINARY PDF]
+  // [ASYNCHRONOUS POST MUTATION & STREAM BINARY PDF]
   // ==========================================================
 
   const handleEksekusiSimpan = async () => {
@@ -374,17 +341,25 @@ export default function Pos() {
     );
 
     try {
+      const token = localStorage.getItem("accessToken");
       const response = await fetch(
         "http://127.0.0.1:8000/api/sales/pos-transactions/",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify(dataAkanDisimpan),
         },
       );
 
       if (!response.ok) {
         const errRes = await response.json().catch(() => ({}));
+
+        if (errRes.error) {
+          throw new Error(errRes.error);
+        }
         if (errRes.nomor_invoice) {
           throw new Error("Nomor Invoice POS ini sudah terkunci di database!");
         }
@@ -413,12 +388,12 @@ export default function Pos() {
       document.body.appendChild(linkDownload);
       linkDownload.click();
 
-      document.body.removeChild(linkDownload);
+      linkDownload.parentNode.removeChild(linkDownload);
       window.URL.revokeObjectURL(fileUrl);
 
       toast.update(idToastPOS, {
         render:
-          "Sukses! Nota terkunci di database dan Invoice PDF berhasil diunduh.",
+          "Sukses! Nota terkunci di database and Invoice PDF berhasil diunduh.",
         type: "success",
         isLoading: false,
         autoClose: 3000,
@@ -439,12 +414,13 @@ export default function Pos() {
       setDataAkanDisimpan(null);
 
       fetchHistoriSertaUrutanInvoice();
+      fetchKatalogProdukGudang();
     } catch (error) {
       toast.update(idToastPOS, {
         render: error.message,
         type: "error",
         isLoading: false,
-        autoClose: 4000,
+        autoClose: 5000,
       });
     }
   };
@@ -597,58 +573,79 @@ export default function Pos() {
                 <label className="block text-gray-400 mb-1">
                   Metode Pembayaran
                 </label>
-                <div className="grid grid-cols-2 gap-1.5 select-none">
+                <div className="grid grid-cols-3 gap-1.5 select-none">
                   <button
                     type="button"
-                    onClick={() => handleMetodeBayarChange("TUNAI")}
+                    onClick={() => handleMetodeBayarChangeDirect("TUNAI")}
                     className={`py-1.5 text-center rounded-lg font-bold border text-[10px] uppercase transition-all ${
                       formData.metodeBayar === "TUNAI"
                         ? "bg-emerald-950 text-emerald-400 border-emerald-500/40"
                         : "bg-[#15171c] border-gray-800 text-gray-500"
                     }`}
                   >
-                    Input Tunai
+                    Tunai
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => handleMetodeBayarChange("TEMPO/KREDIT")}
+                    onClick={() => handleMetodeBayarChangeDirect("PENDING")}
                     className={`py-1.5 text-center rounded-lg font-bold border text-[10px] uppercase transition-all ${
-                      formData.metodeBayar === "TEMPO/KREDIT"
+                      formData.status === "Tempo" &&
+                      formData.jatahTempoHari === 0 &&
+                      formData.jatahTempoHari !== ""
+                        ? "bg-rose-950 text-rose-400 border-rose-500/40"
+                        : "bg-[#15171c] border-gray-800 text-gray-500"
+                    }`}
+                  >
+                    Pending
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleMetodeBayarChangeDirect("TEMPO/KREDIT")
+                    }
+                    className={`py-1.5 text-center rounded-lg font-bold border text-[10px] uppercase transition-all ${
+                      formData.status === "Tempo" &&
+                      (formData.jatahTempoHari > 0 ||
+                        formData.jatahTempoHari === "")
                         ? "bg-amber-950 text-amber-400 border-amber-500/40"
                         : "bg-[#15171c] border-gray-800 text-gray-500"
                     }`}
                   >
-                    Input Tempo
+                    Tempo
                   </button>
                 </div>
               </div>
 
-              {formData.metodeBayar === "TEMPO/KREDIT" && (
-                <div className="grid grid-cols-2 gap-2 bg-[#1e1a15] p-2.5 rounded-lg border border-amber-900/40 animate-fadeIn">
-                  <div>
-                    <label className="block text-amber-400 mb-1">
-                      Jatah (Hari)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.jatahTempoHari}
-                      onChange={(e) => handleJatahHariInput(e.target.value)}
-                      className="w-full bg-[#15171c] border border-amber-900/60 rounded-lg p-1 text-white focus:outline-none text-[11px] font-bold"
-                    />
+              {formData.status === "Tempo" &&
+                (formData.jatahTempoHari > 0 ||
+                  formData.jatahTempoHari === "") && (
+                  <div className="grid grid-cols-2 gap-2 bg-[#1e1a15] p-2.5 rounded-lg border border-amber-900/40 animate-fadeIn">
+                    <div>
+                      <label className="block text-amber-400 mb-1">
+                        Jatah (Hari)
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.jatahTempoHari}
+                        onChange={(e) => handleJatahHariInput(e.target.value)}
+                        className="w-full bg-[#15171c] border border-amber-900/60 rounded-lg p-1 text-white focus:outline-none text-[11px] font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">
+                        Tgl Tempo
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.jatuhTempo}
+                        readOnly
+                        className="w-full bg-[#15171c]/40 border border-gray-800 rounded-lg p-1 text-gray-500 text-[10px] cursor-not-allowed font-mono text-center"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-gray-400 mb-1">
-                      Tgl Tempo
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.jatuhTempo}
-                      readOnly
-                      className="w-full bg-[#15171c]/40 border border-gray-800 rounded-lg p-1 text-gray-500 text-[10px] cursor-not-allowed font-mono text-center"
-                    />
-                  </div>
-                </div>
-              )}
+                )}
 
               <div>
                 <label className="block text-gray-400 mb-1">
@@ -690,7 +687,7 @@ export default function Pos() {
                   <option value="">-- Pilih SKU Gudang --</option>
                   {produkGudang.map((prod, index) => (
                     <option key={index} value={index}>
-                      [{prod.sku}] - {prod.nama}
+                      [{prod.sku}] - {prod.nama} (Stok: {prod.stokAktual} Pcs)
                     </option>
                   ))}
                 </select>
@@ -744,14 +741,14 @@ export default function Pos() {
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-4">
             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
               <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider select-none">
-                🛒 Meja Kasir POS Active Draft
+                🛒 POS
               </h3>
               <div className="text-right text-xs font-mono select-none">
                 <span className="text-gray-500 mr-4">
                   Subtotal: Rp {subtotalCart.toLocaleString("id-ID")}
                 </span>
                 <span className="text-xs font-black text-white">
-                  Grand Total Jual:{" "}
+                  Grand Total:{" "}
                   <span className="text-sky-400">
                     Rp {grandTotalCart.toLocaleString("id-ID")}
                   </span>
@@ -778,8 +775,7 @@ export default function Pos() {
                         colSpan="6"
                         className="p-6 text-center text-gray-500 bg-[#1a1c23] italic"
                       >
-                        Meja kasir kosong. Isi formulir muat artikel di panel
-                        kiri.
+                        Isi formulir muat artikel di panel kiri.
                       </td>
                     </tr>
                   ) : (
@@ -832,7 +828,7 @@ export default function Pos() {
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3">
             <div className="flex justify-between items-center border-b border-gray-800 pb-2">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider select-none">
-                📋 Aktivitas Kasir POS Terpasang
+                📋 Aktivitas POS (Hari Ini)
               </h3>
               <div className="relative">
                 <input
@@ -854,27 +850,28 @@ export default function Pos() {
                     <th className="p-2.5">Pelanggan Toko</th>
                     <th className="p-2.5 text-center">Metode</th>
                     <th className="p-2.5 text-center">Status</th>
-                    <th className="p-2.5 text-right">Grand Total</th>
-                    <th className="p-2.5 text-center pr-4">Aksi</th>
+                    <th className="p-2.5 text-right pr-5">Grand Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800/50 text-xs font-medium">
                   {filteredArsip.length === 0 ? (
                     <tr>
                       <td
-                        colSpan="7"
+                        colSpan="6"
                         className="p-4 text-center text-gray-500 bg-[#1a1c23] italic"
                       >
-                        Belum ada riwayat transaksi di database.
+                        Belum ada riwayat transaksi di database untuk hari ini.
                       </td>
                     </tr>
                   ) : (
                     filteredArsip.map((pos) => (
                       <tr
                         key={pos.id || pos.nomorInvoice}
-                        className="hover:bg-[#1d2029]/30"
+                        onClick={() => setInvoiceDitinjau(pos)}
+                        className="hover:bg-[#1d2029]/80 transition-colors cursor-pointer group"
+                        title="Klik baris transaksi untuk meninjau detail item"
                       >
-                        <td className="p-2.5 pl-4 font-mono text-amber-500 font-bold">
+                        <td className="p-2.5 pl-4 font-mono text-amber-500 font-bold group-hover:underline">
                           {pos.nomorInvoice}
                         </td>
                         <td className="p-2.5 text-gray-500 font-mono">
@@ -897,20 +894,8 @@ export default function Pos() {
                             {pos.status}
                           </span>
                         </td>
-                        <td className="p-2.5 text-right font-black text-sky-400 font-mono">
+                        <td className="p-2.5 text-right font-black text-sky-400 font-mono pr-5">
                           Rp {pos.grandTotal.toLocaleString("id-ID")}
-                        </td>
-                        <td className="p-2.5 text-center pr-4 select-none">
-                          {/* 🔥 TOMBOL SEKARANG MEMICU MODAL MERAH KUSTOM */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setInvoiceAkanDihapus(pos.nomorInvoice)
-                            }
-                            className="text-red-400 hover:text-red-300 font-bold text-[11px] bg-red-950/20 hover:bg-red-950/50 px-2 py-1 rounded border border-red-900/30 transition-all active:scale-95"
-                          >
-                            🗑️ Hapus
-                          </button>
                         </td>
                       </tr>
                     ))
@@ -923,7 +908,7 @@ export default function Pos() {
       </div>
 
       {/* ==========================================================
-          [SESI 8: POP-UP DIALOG MODAL VALIDATION (SI EMERALD)]
+          [ POP-UP DIALOG MODAL VALIDATION (SI EMERALD) ]
           ========================================================== */}
       {dataAkanDisimpan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -962,7 +947,7 @@ export default function Pos() {
                 </span>
               </div>
               <div className="flex justify-between border-t border-gray-800/60 pt-1.5 mt-1">
-                <span className="text-gray-500">Total Tagihan Kasir:</span>
+                <span className="text-gray-500">Total Tagihan:</span>
                 <span className="text-sky-400 font-black font-mono text-[13px]">
                   Rp {dataAkanDisimpan.grandTotal.toLocaleString("id-ID")}
                 </span>
@@ -990,42 +975,121 @@ export default function Pos() {
       )}
 
       {/* ==========================================================
-          🔥 [SESI 9: POP-UP DIALOG MODAL KONFIRMASI HAPUS (SI MERAH KUSTOM)]
+          🌟 [ POP-UP MODAL: TINJAUAN RINCIAN ITEM BARANG TRANSAKSI POS HARI INI ]
           ========================================================== */}
-      {invoiceAkanDihapus && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-          <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-fadeIn">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl">🚨</span>
-              <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                Hapus Faktur Penjualan?
+      {invoiceDitinjau && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#1a1c23] border border-gray-800 rounded-xl w-full max-w-2xl p-5 shadow-2xl relative space-y-4">
+            <button
+              onClick={() => setInvoiceDitinjau(null)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors font-bold text-sm"
+            >
+              ✕
+            </button>
+            <div>
+              <h3 className="text-sm font-black uppercase text-white tracking-wide">
+                Rincian Item POS
               </h3>
+              <p className="text-[11px] text-gray-500 font-mono mt-0.5">
+                No Faktur: {invoiceDitinjau.nomorInvoice} | Tanggal Terbit:{" "}
+                {invoiceDitinjau.tanggal}
+              </p>
             </div>
 
-            <div className="text-xs text-gray-400 leading-relaxed border-b border-gray-800 pb-3">
-              Apakah Anda benar-benar yakin ingin menghapus permanen faktur
-              penjualan{" "}
-              <span className="text-red-400 font-mono font-bold">
-                "{invoiceAkanDihapus}"
-              </span>{" "}
-              beserta seluruh rincian barangnya? Tindakan ini akan membatalkan
-              data penjualan dan tidak dapat dibatalkan.
+            <div className="bg-[#15171c]/60 border border-gray-800/80 rounded-xl p-3.5 text-xs space-y-2">
+              <div>
+                <p className="text-[10px] text-gray-500 font-medium">
+                  Customer:
+                </p>
+                <p className="text-white font-black text-sm mt-0.5">
+                  {invoiceDitinjau.pelanggan}
+                </p>
+              </div>
+              <div className="pt-2 border-t border-gray-800/40">
+                <p className="text-[10px] text-gray-500 font-medium">
+                  Alamat Pengiriman:
+                </p>
+                <p className="text-gray-300 font-bold mt-0.5">
+                  {invoiceDitinjau.alamat}
+                </p>
+              </div>
+              <div className="pt-2 border-t border-gray-800/40 flex justify-between items-center text-[11px]">
+                <div>
+                  <span className="text-gray-500">Metode Bayar:</span>
+                  <span className="text-amber-400 font-black ml-1.5">
+                    {invoiceDitinjau.metodeBayar} ({invoiceDitinjau.status})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Ongkos Kirim:</span>
+                  <span className="text-emerald-400 font-mono font-bold ml-1.5">
+                    Rp {invoiceDitinjau.ongkir.toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex gap-3 pt-2 text-xs select-none">
+            <div className="overflow-x-auto rounded-lg border border-gray-800/50 max-h-48 overflow-y-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#15171c] text-gray-400 border-b border-gray-800 text-[10px] font-bold select-none">
+                    <th className="p-3 pl-4 w-[15%]">SKU</th>
+                    <th className="p-3 w-[45%]">Nama Deskripsi Produk</th>
+                    <th className="p-3 text-right w-[15%]">Harga Satuan</th>
+                    <th className="p-3 text-center w-[10%]">Qty</th>
+                    <th className="p-3 text-right pr-4 w-[15%]">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/40 font-medium text-xs">
+                  {invoiceDitinjau.items && invoiceDitinjau.items.length > 0 ? (
+                    invoiceDitinjau.items.map((item, idx) => (
+                      <tr
+                        key={idx}
+                        className="hover:bg-[#20232c]/40 text-gray-300"
+                      >
+                        <td className="p-3 pl-4 font-mono text-blue-400">
+                          {item.sku}
+                        </td>
+                        <td className="p-3 text-white font-bold">
+                          {item.nama_produk}
+                        </td>
+                        <td className="p-3 text-right text-gray-400 font-mono">
+                          Rp {item.harga.toLocaleString("id-ID")}
+                        </td>
+                        <td className="p-3 text-center font-bold text-white font-mono">
+                          {item.qty}
+                        </td>
+                        <td className="p-3 text-right pr-4 text-sky-400 font-bold font-mono">
+                          Rp {item.total.toLocaleString("id-ID")}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="p-4 text-center text-gray-500">
+                        Item rincian belanja kosong.
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="bg-[#15171c]/80 text-xs font-black text-white">
+                    <td colSpan="4" className="p-2.5 text-right text-gray-400">
+                      GRAND TOTAL FAKTUR:
+                    </td>
+                    <td className="p-2.5 text-right pr-4 font-mono text-sm text-sky-400">
+                      Rp {invoiceDitinjau.grandTotal.toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setInvoiceAkanDihapus(null)}
-                className="flex-1 bg-[#242731] hover:bg-gray-700 text-gray-300 py-2.5 rounded-lg font-bold transition-all"
+                onClick={() => setInvoiceDitinjau(null)}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs uppercase tracking-wide transition-all shadow-sm"
               >
-                Batal / Kembali
-              </button>
-              <button
-                type="button"
-                onClick={handleEksekusiHapusTransaksi}
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-lg font-bold shadow-lg transition-all"
-              >
-                Ya, Hapus Permanen
+                Tutup Rincian Nota
               </button>
             </div>
           </div>

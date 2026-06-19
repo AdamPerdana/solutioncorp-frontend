@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Customer() {
   // ==========================================================
-  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
+  // [STATE MANAGEMENT & INITIALIZATION ]
   // ==========================================================
-  // Wadah penyimpanan data pelanggan dan status UI selama halaman aktif.
 
-  // Laci utama menampung seluruh data profil pelanggan dari cloud database Django
   const [daftarCustomer, setDaftarCustomer] = useState([]);
-
-  // Saklar loading utama untuk mengendalikan animasi sinkronisasi UI saat fetch data sedang berjalan
   const [loading, setLoading] = useState(true);
 
-  // Object state untuk mengontrol data dua arah (two-way binding) di form input registrasi/edit
   const [formCustomer, setFormCustomer] = useState({
     nama: "",
     kontak: "",
@@ -20,74 +18,59 @@ export default function Customer() {
     alamat: "",
   });
 
-  // State pembantu untuk manajemen kata kunci pencarian (live search) di tabel
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Slot memori pengunci data objek pelanggan yang lolos validasi form dan siap dilempar ke modal konfirmasi
   const [dataAkanDisimpan, setDataAkanDisimpan] = useState(null);
-
-  // Slot memori pengunci data pelanggan yang ditargetkan untuk dihapus permanen lewat modal pop-up merah
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
   // ==========================================================
-  // [SESI 2: DATA FETCHING & BACKEND SYNC (ALUR PIPA API)]
+  // [DATA FETCHING WITH JWT AUTHORIZATION]
   // ==========================================================
 
-  // Trigger Otomatis: Jalankan pengambilan data sesaat setelah komponen berhasil di-mount pertama kali
   useEffect(() => {
     fetchCustomerDariBackend();
   }, []);
 
-  // Fungsi asynchronous mengambil data master pelanggan menggunakan Fetch API dari rute endpoint Django REST
   const fetchCustomerDariBackend = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/sales/customers/",
-      );
-      if (!response.ok) throw new Error("Gagal mengambil data dari server");
-      const data = await response.json();
-
-      // Simpan array records pelanggan dari database pusat langsung ke dalam state lokal
-      setDaftarCustomer(data);
+      const data = await apiRequest("/api/sales/customers/");
+      if (data) {
+        setDaftarCustomer(data);
+      }
     } catch (error) {
       console.error("Error Fetching:", error);
-      alert("Koneksi ke server backend Django terputus!");
+      toast.error("Koneksi ke server backend Django terputus!");
     } finally {
-      // Matikan indikator loading jika proses request data internet telah selesai
       setLoading(false);
     }
   };
 
   // ==========================================================
-  // [SESI 3: FORM CONTROL & VALIDATION LOGIC (INTERCEPTOR FORM)]
+  // [FORM CONTROL & VALIDATION]
   // ==========================================================
 
-  // FUNGSI A: Handler pelempar data dari baris tabel kembali ke form input kiri (proses edit/update)
   const handleEditClick = (item) => {
     setFormCustomer({
       nama: item.nama,
-      // FORM INTERCEPTOR: Jika data di database bernilai default "-", kosongkan field agar bersih saat diedit
       kontak: item.kontak === "-" ? "" : item.kontak,
       telepon: item.telepon === "-" ? "" : item.telepon,
       alamat: item.alamat === "-" ? "" : item.alamat,
     });
+    toast.info("Profil pelanggan dimuat ke form input.", { autoClose: 1500 });
   };
 
-  // FUNGSI B: Validasi input awal dan menentukan status apakah aksi berupa data baru (POST) atau pembaruan data (PUT)
   const handlePicuKonfirmasi = (e) => {
-    e.preventDefault(); // Menahan reload halaman bawaan form HTML
-    if (formCustomer.nama.trim() === "") return;
+    e.preventDefault();
+    if (formCustomer.nama.trim() === "") {
+      return toast.warning("Nama perusahaan / toko wajib diisi!");
+    }
 
     const targetNama = formCustomer.nama.trim();
-
-    // CREATE OR UPDATE DETECTOR: Cek duplikasi nama di state lokal untuk menentukan mode operasi (Case-Insensitive)
     const customerLama = daftarCustomer.find(
       (item) => item.nama.toLowerCase() === targetNama.toLowerCase(),
     );
 
-    // Menyusun payload data terstandarisasi sebelum dikunci ke modal konfirmasi (jika kosong, paksa beri strip "-")
     setDataAkanDisimpan({
-      isUpdate: !!customerLama, // Jika customerLama ditemukan bernilai true (PUT), jika tidak ditemukan bernilai false (POST)
+      isUpdate: !!customerLama,
       id: customerLama ? customerLama.id : null,
       nama: targetNama,
       kontak: formCustomer.kontak.trim() || "-",
@@ -97,14 +80,14 @@ export default function Customer() {
   };
 
   // ==========================================================
-  // [SESI 4: DATABASE MUTATION (POST, PUT, DELETE)]
+  // [DATABASE MUTATION WITH JWT AUTHORIZATION]
   // ==========================================================
 
-  // FUNGSI A: Eksekutor mutasi data menyimpan entitas baru (POST) atau perbarui entitas lama (PUT) ke database
   const handleEksekusiSimpan = async () => {
     if (!dataAkanDisimpan) return;
 
-    // Persiapan paket data bersih sebelum dikirimkan lewat body request JSON
+    const idToastCust = toast.loading("Sedang mengamankan data rekanan...");
+
     const payload = {
       nama: dataAkanDisimpan.nama,
       kontak: dataAkanDisimpan.kontak,
@@ -114,83 +97,92 @@ export default function Customer() {
 
     try {
       if (dataAkanDisimpan.isUpdate) {
-        // --- KONDISI EDIT DATA (PUT METHOD) ---
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/sales/customers/${dataAkanDisimpan.id}/`,
+        const updatedData = await apiRequest(
+          `/api/sales/customers/${dataAkanDisimpan.id}/`,
           {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           },
         );
 
-        if (!response.ok) throw new Error("Gagal memperbarui data di server");
+        if (updatedData) {
+          setDaftarCustomer((prev) =>
+            prev.map((item) =>
+              item.id === dataAkanDisimpan.id ? updatedData : item,
+            ),
+          );
 
-        const updatedData = await response.json();
-
-        // OPTIMISTIC UI UPDATE: Memperbarui baris data tabel lokal secara real-time tanpa reload browser
-        setDaftarCustomer((prev) =>
-          prev.map((item) =>
-            item.id === dataAkanDisimpan.id ? updatedData : item,
-          ),
-        );
+          toast.update(idToastCust, {
+            render: `Sukses memperbarui profil toko "${dataAkanDisimpan.nama}".`,
+            type: "success",
+            isLoading: false,
+            autoClose: 3000,
+          });
+        }
       } else {
-        // --- KONDISI DATA BARU (POST METHOD) ---
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/sales/customers/",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-        );
+        const customerBaru = await apiRequest("/api/sales/customers/", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
 
-        if (!response.ok) throw new Error("Gagal menyimpan pelanggan baru");
+        if (customerBaru) {
+          setDaftarCustomer((prev) => [customerBaru, ...prev]);
 
-        const customerBaru = await response.json();
-        // Memasukkan record data pelanggan baru dari server langsung ke posisi urutan teratas tabel UI
-        setDaftarCustomer((prev) => [customerBaru, ...prev]);
+          toast.update(idToastCust, {
+            render: `Sukses mendaftarkan customer "${dataAkanDisimpan.nama}".`,
+            type: "success",
+            isLoading: false,
+            autoClose: 3000,
+          });
+        }
       }
 
-      // KEBIJAKAN PEMBERSIHAN: Form di-reset total and state modal konfirmasi ditutup setelah operasi sukses
       setFormCustomer({ nama: "", kontak: "", telepon: "", alamat: "" });
       setDataAkanDisimpan(null);
     } catch (error) {
       console.error("Error Saving:", error);
-      alert(error.message);
+      toast.update(idToastCust, {
+        render: "Gagal menyimpan data pelanggan ke server.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
     }
   };
 
-  // FUNGSI B: Eksekutor pembuangan data record pelanggan secara permanen dari database (DELETE REQUEST)
   const handleEksekusiHapus = async () => {
     if (!dataAkanDihapus) return;
 
+    const idToastHapus = toast.loading("Menghapus data pelanggan...");
+
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/sales/customers/${dataAkanDihapus.id}/`,
-        {
-          method: "DELETE",
-        },
-      );
+      await apiRequest(`/api/sales/customers/${dataAkanDihapus.id}/`, {
+        method: "DELETE",
+      });
 
-      if (!response.ok) throw new Error("Gagal menghapus data dari server");
-
-      // REAL-TIME FILTERING: Lakukan pemotongan array lokal agar UI langsung sinkron menghilang tanpa hit ulang API
       setDaftarCustomer((prev) =>
         prev.filter((item) => item.id !== dataAkanDihapus.id),
       );
-      // Tutup modal pop-up konfirmasi merah
+
+      toast.update(idToastHapus, {
+        render: "Profil pelanggan berhasil dihapus secara permanen.",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       setDataAkanDihapus(null);
     } catch (error) {
       console.error("Error Deleting:", error);
-      alert(error.message);
+      toast.update(idToastHapus, {
+        render: "Gagal menghapus data pelanggan dari server.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
     }
   };
 
-  // ==========================================================
-  // [SESI 5: SEARCH FILTER & RENDERING LOGIC (LIVE SEARCH)]
-  // ==========================================================
-  // Melakukan penyaringan baris tabel secara real-time berdasarkan kecocokan parameter nama, kontak, atau alamat
   const filteredData = daftarCustomer.filter(
     (item) =>
       item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -200,6 +192,8 @@ export default function Customer() {
 
   return (
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 flex flex-col font-sans">
+      <ToastContainer theme="dark" />
+
       {/* HEADER MODUL */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
@@ -289,7 +283,7 @@ export default function Customer() {
           </button>
         </form>
 
-        {/* PANEL KANAN: MONITORING MONITOR TABLE */}
+        {/* PANEL KANAN: MONITORING TABLE */}
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">
@@ -321,12 +315,12 @@ export default function Customer() {
                   <th className="p-3.5 text-center pr-5 w-[15%]">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800/50 font-medium text-xs">
+              <tbody className="divide-y divide-gray-800/50 text-xs font-medium">
                 {loading ? (
                   <tr>
                     <td
                       colSpan="5"
-                      className="p-8 text-center text-emerald-400 font-semibold bg-[#1a1c23]"
+                      className="p-8 text-center text-emerald-400 font-semibold bg-[#1a1c23] animate-pulse"
                     >
                       🔄 Menghubungkan ke server Django...
                     </td>
@@ -364,6 +358,7 @@ export default function Customer() {
                             type="button"
                             onClick={() => handleEditClick(item)}
                             className="text-gray-500 hover:text-emerald-400 transition-colors text-xs"
+                            title="Edit profil"
                           >
                             📝
                           </button>
@@ -376,6 +371,7 @@ export default function Customer() {
                               })
                             }
                             className="text-gray-500 hover:text-red-400 transition-colors text-xs"
+                            title="Hapus permanen"
                           >
                             🗑
                           </button>
@@ -390,11 +386,11 @@ export default function Customer() {
         </div>
       </div>
 
-      {/* POP-UP : PERINGATAN SEBELUM SAVE DATA CUSTOMER (SI AMBER / SI EMERALD) */}
+      {/* POP-UP : PERINGATAN SEBELUM SAVE DATA CUSTOMER */}
       {dataAkanDisimpan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div
-            className={`bg-[#1a1c23] border rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl ${
+            className={`bg-[#1a1c23] border rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-fadeIn ${
               dataAkanDisimpan.isUpdate
                 ? "border-amber-500/30"
                 : "border-blue-500/30"
@@ -450,7 +446,7 @@ export default function Customer() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2 text-xs">
+            <div className="flex gap-3 pt-2 text-xs select-none">
               <button
                 type="button"
                 onClick={() => setDataAkanDisimpan(null)}
@@ -474,10 +470,10 @@ export default function Customer() {
         </div>
       )}
 
-      {/* POP-UP : PERINGATAN SEBELUM HAPUS DATA CUSTOMER (SI MERAH) */}
+      {/* POP-UP : PERINGATAN SEBELUM HAPUS DATA CUSTOMER */}
       {dataAkanDihapus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-fadeIn">
             <div className="flex items-center space-x-2">
               <span className="text-xl">🚨</span>
               <h3 className="text-sm font-black uppercase tracking-wider text-white">
@@ -494,7 +490,7 @@ export default function Customer() {
               database.
             </div>
 
-            <div className="flex gap-3 pt-2 text-xs">
+            <div className="flex gap-3 pt-2 text-xs select-none">
               <button
                 type="button"
                 onClick={() => setDataAkanDihapus(null)}

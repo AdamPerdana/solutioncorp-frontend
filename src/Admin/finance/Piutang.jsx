@@ -1,116 +1,75 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Piutang() {
   // ==========================================================
-  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
+  // [ COMPONENT STATE MANAGEMENT & INITIALIZATION ]
   // ==========================================================
-  // Semua fungsi useState di bawah ini ibarat laci penyimpanan di meja kerja kasir.
 
-  // Laci utama untuk menampung seluruh daftar kertas nota piutang yang diambil dari database Django
   const [daftarPiutang, setDaftarPiutang] = useState([]);
-
-  // Saklar lampu indikator. Jika 'true', layar menampilkan animasi memuat data dari server
   const [loading, setLoading] = useState(true);
-
-  // Penampung teks ketikan kasir di kolom pencarian (mencari nama toko atau nomor invoice)
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Menyimpan status filter aktif di atas tabel (default "Semua", bisa pindah ke "Lunas"/"Belum Lunas")
   const [filterStatus, setFilterStatus] = useState("Semua");
-
-  // Tempat menaruh SATU objek data piutang yang dipilih kasir saat mau melakukan pelunasan uang
   const [piutangAkanDilunasi, setPiutangAkanDilunasi] = useState(null);
-
-  // Tempat menaruh data manifest rincian item barang (SKU, Nama, Qty) setelah sukses ditembak dari database
   const [invoiceDitinjau, setInvoiceDitinjau] = useState(null);
-
-  // Indikator loading mini khusus saat backend sedang sibuk mencari rincian item barang dari invoice tertentu
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // Slot memori untuk mengunci data invoice yang ditargetkan kasir untuk dihapus permanen lewat modal merah
-  const [dataAkanHapus, setDataAkanHapus] = useState(null);
-
   // ==========================================================
-  // [SESI 2: DATA FETCHING LOGIC (PIPA INTEGRASI DJANGO API)]
+  // [ DATA FETCHING (INTEGRASI DJANGO API WITH JWT AUTHORIZATION) ]
   // ==========================================================
 
-  // Pemicu otomatis: Begitu browser selesai merender halaman ini pertama kali, langsung ambil data dari server
   useEffect(() => {
     fetchPiutangDariBackend();
-  }, []); // Array kosong [] menjamin fungsi di dalam hanya berjalan 1x di awal pembukaan halaman
+  }, []);
 
-  // FUNGSI A: Mengambil data master piutang dagang dari database pusat
   const fetchPiutangDariBackend = async () => {
     try {
-      // Kirim kurir fetch untuk meminta data ke endpoint keuangan milik Django
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/finance/piutang/",
-      );
-
-      // Jika gerbang API backend error atau down, lempar instruksi ke blok catch
-      if (!response.ok)
-        throw new Error("Gagal mengambil data piutang dari server");
-
-      // Konversi paket data mentah json dari server menjadi object JavaScript
-      const data = await response.json();
-
-      // Jembatan Bahasa: Petakan database Django (snake_case) ke format React (camelCase)
-      const dataDipetakan = data.map((item) => ({
-        id: item.id,
-        nomorInvoice: item.nomor_invoice,
-        pelanggan: item.pelanggan,
-        tanggalTransaksi: item.tanggal_transaksi,
-        jatuhTempo: item.jatuh_tempo,
-        totalTagihan: item.total_tagihan,
-        sisaPiutang: item.sisa_piutang,
-        statusPiutang: item.status_piutang,
-      }));
-
-      // Masukkan data yang sudah rapi ke laci utama agar tabel otomatis terisi
-      setDaftarPiutang(dataDipetakan);
+      const data = await apiRequest("/api/finance/piutang/");
+      if (data) {
+        const dataDipetakan = data.map((item) => ({
+          id: item.id,
+          nomorInvoice: item.nomor_invoice,
+          pelanggan: item.pelanggan,
+          tanggalTransaksi: item.tanggal_transaksi,
+          jatuhTempo: item.jatuh_tempo,
+          totalTagihan: item.total_tagihan,
+          sisaPiutang: item.sisa_piutang,
+          statusPiutang: item.status_piutang,
+        }));
+        setDaftarPiutang(dataDipetakan);
+      }
     } catch (error) {
       console.error("Error Fetching Piutang:", error);
       alert("Koneksi data piutang ke server Django terputus!");
     } finally {
-      // Matikan lampu indikator memuat data, karena proses fetching sudah selesai (sukses/gagal)
       setLoading(false);
     }
   };
 
-  // FUNGSI B: Mengambil detail sub-item barang di dalam invoice saat baris tabel diklik
   const handleBukaRincianDokumen = async (id) => {
-    // Nyalakan loading khusus detail barang
     setLoadingDetail(true);
     try {
-      // Tembak API Django spesifik menggunakan ID piutang target
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/finance/piutang/${id}/`,
-      );
-      if (!response.ok)
-        throw new Error("Gagal memuat rincian item dari server");
-
-      const data = await response.json();
-      // Masukkan data rincian barang ke state peninjauan agar pop-up modal tergambar di layar
-      setInvoiceDitinjau(data);
+      const data = await apiRequest(`/api/finance/piutang/${id}/`);
+      if (data) {
+        setInvoiceDitinjau(data);
+      }
     } catch (error) {
       console.error("Error detail piutang:", error);
-      alert(error.message);
+      alert("Gagal memuat rincian item dari server");
     } finally {
-      // Matikan loading detail barang
       setLoadingDetail(false);
     }
   };
 
   // ==========================================================
-  // [SESI 3: MUTATION LOGIC (PROSEDUR PERUBAHAN & PENGHAPUSAN)]
+  // [ MUTATION (PERUBAHAN PELUNASAN WITH JWT AUTHORIZATION) ]
   // ==========================================================
 
-  // FUNGSI A: Eksekusi mengubah status utang menjadi Lunas (PUT Method)
   const handleEksekusiPelunasanFull = async () => {
-    // Safety guard: Jika data kosong, batalkan eksekusi untuk menghindari eror crash aplikasi
     if (!piutangAkanDilunasi) return;
 
-    // Bungkus paket data baru. Set sisa_piutang jadi 0 dan ganti status keuangan menjadi "Lunas"
     const payload = {
       nomor_invoice: piutangAkanDilunasi.nomorInvoice,
       pelanggan: piutangAkanDilunasi.pelanggan,
@@ -122,89 +81,50 @@ export default function Piutang() {
     };
 
     try {
-      // Kirim perintah PUT ke server untuk menimpa data piutang lama di database Django
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/finance/piutang/${piutangAkanDilunasi.id}/`,
+      const dataTerupdate = await apiRequest(
+        `/api/finance/piutang/${piutangAkanDilunasi.id}/`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
       );
 
-      if (!response.ok) throw new Error("Gagal memproses pelunasan di server");
-
-      const dataTerupdate = await response.json();
-
-      // JALUR OVERRIDE STATE: Mengubah data di layar kasir secara instan tanpa fetch ulang ke server
-      setDaftarPiutang((prevList) =>
-        prevList.map(
-          (item) =>
+      if (dataTerupdate) {
+        setDaftarPiutang((prevList) =>
+          prevList.map((item) =>
             item.id === piutangAkanDilunasi.id
               ? {
                   ...item,
                   sisaPiutang: dataTerupdate.sisa_piutang,
                   statusPiutang: dataTerupdate.status_piutang,
                 }
-              : item, // Jika ID tidak cocok, biarkan data item PO/Sales lainnya tetap utuh
-        ),
-      );
-
-      // Tutup kembali pop-up modal pelunasan keuangan
-      setPiutangAkanDilunasi(null);
+              : item,
+          ),
+        );
+        setPiutangAkanDilunasi(null);
+      }
     } catch (error) {
       console.error("Error Pelunasan Piutang:", error);
-      alert(error.message);
-    }
-  };
-
-  // FUNGSI B: Lenyapkan catatan piutang dari lembar kerja (DELETE Method)
-  const handleEksekusiHapus = async () => {
-    if (!dataAkanHapus) return;
-
-    try {
-      // Kirim sinyal penghancuran data (DELETE) ke server database Django
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/finance/piutang/${dataAkanHapus.id}/`,
-        { method: "DELETE" },
-      );
-
-      if (!response.ok)
-        throw new Error("Gagal menghapus entitas piutang dari server");
-
-      // Usir baris data yang dihapus dari layar browser kasir menggunakan fungsi array .filter()
-      setDaftarPiutang((prev) =>
-        prev.filter((item) => item.id !== dataAkanHapus.id),
-      );
-
-      // Bersihkan dan tutup seluruh sisa pop-up modal yang sedang mengambang di layar
-      setInvoiceDitinjau(null);
-      setDataAkanHapus(null);
-    } catch (error) {
-      console.error("Error Deleting Piutang:", error);
-      alert(error.message);
+      alert("Gagal memproses pelunasan di server");
     }
   };
 
   // ==========================================================
-  // [SESI 4: LIVE METRIC CALCULATION & REAL-TIME FILTERING]
+  // [ CALCULATION & FILTERING ]
   // ==========================================================
 
-  // METRIK 1: Menghitung total akumulasi nominal piutang yang belum dibayar oleh pembeli/customer
   const totalPiutangBeredar = daftarPiutang.reduce(
     (sum, item) =>
       sum + (item.statusPiutang !== "Lunas" ? item.sisaPiutang : 0),
-    0, // Angka akumulator sum dimulai dari nominal 0
+    0,
   );
 
-  // METRIK 2: Menghitung total nilai uang yang mandek akibat customer melewati batas tanggal jatuh tempo
   const totalOverdue = daftarPiutang.reduce(
     (sum, item) =>
       sum + (item.statusPiutang === "Jatuh Tempo" ? item.sisaPiutang : 0),
     0,
   );
 
-  // ENGINE PENYARING DATA: Memotong isi tabel secara real-time berdasarkan input ketikan teks and tombol status
   const filteredData = daftarPiutang.filter((item) => {
     const cocokNama =
       item.pelanggan.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -213,14 +133,13 @@ export default function Piutang() {
     const cocokStatus =
       filterStatus === "Semua" || item.statusPiutang === filterStatus;
 
-    return cocokNama && cocokStatus; // Hanya lolos ke tabel jika kedua kondisi bernilai benar (true)
+    return cocokNama && cocokStatus;
   });
 
-  // ==========================================================
-  // [SESI 5: RENDER USER INTERFACE & POP-UP LAYOUT MODAL]
-  // ==========================================================
   return (
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 flex flex-col">
+      <ToastContainer theme="dark" />
+
       {/* HEADER HALAMAN */}
       <div className="pb-4 border-b border-gray-800 mb-6">
         <h2 className="text-xl font-bold text-white tracking-wide">
@@ -365,7 +284,7 @@ export default function Piutang() {
                     </td>
                     <td
                       className="p-4 text-center"
-                      onClick={(e) => e.stopPropagation()} // Menahan pemicu agar klik tombol lunas tidak bentrok dengan fungsi klik baris tabel
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-center gap-3">
                         {item.statusPiutang !== "Lunas" ? (
@@ -391,7 +310,6 @@ export default function Piutang() {
         </div>
       </div>
 
-      {/* INDIKATOR LOADING DETAIL BARANG */}
       {loadingDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs">
           <div className="text-amber-400 font-bold text-xs">
@@ -400,7 +318,7 @@ export default function Piutang() {
         </div>
       )}
 
-      {/* MODAL POPUP: RINCIAN DOKUMEN ITEM INVOICE JUAL */}
+      {/* MODAL POPUP RINCIAN */}
       {invoiceDitinjau && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-[#1a1c23] border border-gray-800 rounded-xl w-full max-w-2xl p-5 shadow-2xl relative space-y-4">
@@ -513,71 +431,21 @@ export default function Piutang() {
                 </tbody>
               </table>
             </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
-                onClick={() =>
-                  setDataAkanHapus({
-                    id: invoiceDitinjau.id,
-                    nomorInvoice: invoiceDitinjau.nomor_invoice,
-                  })
-                }
-                className="w-1/3 bg-red-950/30 hover:bg-red-900/60 border border-red-800/50 text-red-400 font-bold py-2 rounded-xl text-xs uppercase tracking-wide transition-all shadow-sm"
-              >
-                🗑️ Hapus
-              </button>
-              <button
-                type="button"
                 onClick={() => setInvoiceDitinjau(null)}
-                className="w-2/3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs uppercase tracking-wide transition-all shadow-sm"
+                className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs uppercase tracking-wide transition-all shadow-sm"
               >
-                Tutup Peninjauan
+                Tutup Peninjauan Berkas
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL CONFIRMATION: DELETE (SI MERAH) */}
-      {dataAkanHapus && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl">🚨</span>
-              <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                Hapus Record Piutang?
-              </h3>
-            </div>
-            <div className="text-xs text-gray-400 leading-relaxed border-b border-gray-800 pb-3">
-              Apakah Anda benar-benar yakin ingin menghapus record piutang untuk
-              invoice{" "}
-              <span className="font-mono font-bold text-red-400">
-                "{dataAkanHapus.nomorInvoice}"
-              </span>
-              ? Tindakan ini hanya membuang pencatatan tagihan di modul finance
-              and tidak akan menghapus berkas utama transaksi di POS.
-            </div>
-            <div className="flex gap-3 pt-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setDataAkanHapus(null)}
-                className="flex-1 bg-[#242731] hover:bg-gray-700 text-gray-300 py-2.5 rounded-lg font-bold transition-all"
-              >
-                Batal / Jangan Hapus
-              </button>
-              <button
-                type="button"
-                onClick={handleEksekusiHapus}
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-lg font-bold transition-all shadow-lg"
-              >
-                Ya, Hapus Permanen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL CONFIRMATION: PELUNASAN (SI AMBER) */}
+      {/* MODAL CONFIRMATION: PELUNASAN */}
       {piutangAkanDilunasi && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-[#1a1c23] border border-amber-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">

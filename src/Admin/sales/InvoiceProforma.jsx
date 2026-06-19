@@ -1,44 +1,28 @@
 import React, { useState, useEffect, useMemo } from "react";
-// IMPOR NOTIFIKASI TOAST MODERN
 import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function Pos() {
   // ==========================================================
-  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
+  // [STATE MANAGEMENT & INITIALIZATION]
   // ==========================================================
-  // Papan kendali penyimpanan data transaksi POS selama admin beraktivitas di halaman proforma.
 
-  // Katalog produk siap jual hasil sinkronisasi dari database aplikasi Inventory
   const [produkGudang, setProdukGudang] = useState([]);
-
-  // Saklar loading utama untuk melacak status penarikan data awal dari server Django
   const [loading, setLoading] = useState(true);
-
-  // Master data pelanggan terdaftar untuk opsi dropdown penjualan
   const [daftarCustomer, setDaftarCustomer] = useState([]);
-
-  // Saklar form customer baru: true jika membuat nama pembeli sementara, false jika pakai list database
   const [isTambahCustomerBaru, setIsTambahCustomerBaru] = useState(false);
-
-  // Penampung teks nama customer sementara yang belum terdaftar di database utama
   const [namaCustomerBaru, setNamaCustomerBaru] = useState("");
-
-  // Menyimpan string alamat pengiriman barang yang tampil di preview nota cetak
   const [alamat, setAlamat] = useState("");
-
-  // LACI MULTI-ITEM: Menampung daftar belanja barang sementara sebelum dikunci menjadi nota proforma resmi
   const [itemsKeranjang, setItemsKeranjang] = useState([]);
 
-  // FORM DATA HEADER: Menyimpan informasi surat berupa Nomor Proforma, Nama Pelanggan, Tanggal, dan Ongkir
   const [formData, setFormData] = useState({
     nomorInvoice: "",
     pelanggan: "",
-    tanggal: new Date().toISOString().split("T")[0], // Otomatis mengisi tanggal hari ini (YYYY-MM-DD)
+    tanggal: new Date().toISOString().split("T")[0],
     ongkir: 0,
   });
 
-  // FORM DATA ITEM: Menampung baris isian barang (Produk, qty, and harga jual custom) yang sedang diketik
   const [itemInput, setItemInput] = useState({
     selectedIndexProduk: "",
     qty: "",
@@ -46,98 +30,38 @@ export default function Pos() {
   });
 
   // ==========================================================
-  // [SESI 2: SINKRONISASI DATABASE & INTEGRASI DJANGO API]
+  // [DATA FETCHING WITH JWT AUTHORIZATION]
   // ==========================================================
 
-  // Trigger Otomatis: Sinkronisasikan data customer, counter nomor urut, dan katalog produk saat halaman dibuka
   useEffect(() => {
     fetchCustomerMaster();
     generateNomorProformaOtomatis();
     fetchKatalogProdukGudang();
   }, []);
 
-  // FUNGSI A: Mengambil daftar nama customer resmi dari server Sales
   const fetchCustomerMaster = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/sales/customers/",
-      );
-      if (!response.ok) throw new Error("Gagal sinkronisasi data pelanggan.");
-      const data = await response.json();
-      setDaftarCustomer(data);
+      const data = await apiRequest("/api/sales/customers/");
+      if (data) setDaftarCustomer(data);
     } catch (error) {
       console.error("Error Fetching Master Customers:", error);
     }
   };
 
-  // FUNGSI B: Mengatur aksi saat dropdown pilihan customer berubah (Auto-Fill Alamat Tujuan Kirim)
-  const handleCustomerSelectChange = (namaSelected) => {
-    setFormData({ ...formData, pelanggan: namaSelected });
-
-    // Cari objek data customer terpilih di dalam laci daftarCustomer
-    const dataCust = daftarCustomer.find((c) => c.nama === namaSelected);
-    if (dataCust && dataCust.alamat) {
-      // AUTO ALAMAT: Isikan alamat tujuan kirim secara otomatis jika data alamat terekam di database
-      setAlamat(dataCust.alamat);
-    } else {
-      setAlamat("");
-    }
-  };
-
-  // FUNGSI C: Menghitung counter transaksi bulanan untuk menyusun format string Nomor Proforma otomatis
-  const generateNomorProformaOtomatis = async () => {
-    const tglSekarang = new Date();
-    const tahun = tglSekarang.getFullYear();
-    const bulan = String(tglSekarang.getMonth() + 1).padStart(2, "0");
-
-    let jumlahTransaksiBulanIni = 0;
-
-    try {
-      // Minta data counter urutan transaksi proforma yang sudah terbit di bulan berjalan dari backend Django
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/sales/proforma-invoices/last-counter/",
-      );
-      if (response.ok) {
-        const resData = await response.json();
-        jumlahTransaksiBulanIni = resData.counter;
-      }
-    } catch (error) {
-      console.error("Gagal mengambil counter proforma terakhir:", error);
-    }
-
-    const nomorMulai = 10; // Standar awal penomoran proforma kantor
-    const nomorUrutFinal = nomorMulai + jumlahTransaksiBulanIni;
-    const stringUrutan = String(nomorUrutFinal).padStart(4, "0"); // Hasil urutan konstan 4 digit (misal: "0010")
-
-    // Suntik string penomoran otomatis ke form header dokumen proforma
-    setFormData((prev) => ({
-      ...prev,
-      nomorInvoice: `PRO/${tahun}/${bulan}/${stringUrutan}`,
-    }));
-  };
-
-  // FUNGSI D: Mengambil katalog komoditas barang dari aplikasi Inventory untuk referensi harga jual real-time
   const fetchKatalogProdukGudang = async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/inventory/products/",
-      );
-      if (!response.ok)
-        throw new Error("Gagal memuat katalog produk dari database.");
-
-      const data = await response.json();
-
-      // Mapping skema JSON: Memetakan variabel snake_case backend ke variabel properti React POS
-      const dataDipetakan = data.map((item) => ({
-        id: item.id,
-        sku: item.sku,
-        nama: item.nama,
-        harga: item.harga_jual || 0, // Mengunci nilai field harga jual resmi dari database
-        stokAktual: item.stok_aktual ?? item.stokAktual ?? 0,
-        satuan: item.satuan,
-      }));
-
-      setProdukGudang(dataDipetakan);
+      const data = await apiRequest("/api/inventory/products/");
+      if (data) {
+        const dataDipetakan = data.map((item) => ({
+          id: item.id,
+          sku: item.sku,
+          nama: item.nama,
+          harga: item.harga_jual || 0,
+          stokAktual: item.stok_aktual ?? item.stokAktual ?? 0,
+          satuan: item.satuan,
+        }));
+        setProdukGudang(dataDipetakan);
+      }
     } catch (error) {
       console.error("Gagal sinkronisasi katalog produk untuk Proforma:", error);
     } finally {
@@ -145,29 +69,62 @@ export default function Pos() {
     }
   };
 
+  const generateNomorProformaOtomatis = async () => {
+    const tglSekarang = new Date();
+    const tahun = tglSekarang.getFullYear();
+    const bulan = String(tglSekarang.getMonth() + 1).padStart(2, "0");
+
+    let jumlahTransaksiBulanIni = 0;
+    try {
+      const resData = await apiRequest(
+        "/api/sales/proforma-invoices/last-counter/",
+      );
+      if (resData) {
+        jumlahTransaksiBulanIni = resData.counter;
+      }
+    } catch (error) {
+      console.error("Gagal mengambil counter proforma terakhir:", error);
+    }
+
+    const nomorMulai = 10;
+    const nomorUrutFinal = nomorMulai + jumlahTransaksiBulanIni;
+    const stringUrutan = String(nomorUrutFinal).padStart(4, "0");
+
+    setFormData((prev) => ({
+      ...prev,
+      nomorInvoice: `PRO/${tahun}/${bulan}/${stringUrutan}`,
+    }));
+  };
+
   // ==========================================================
-  // [SESI 3: LOGIKA HANDLER & KONTROL INPUT (LOGIKA POS)]
+  // [HANDLER & KONTROL INPUT]
   // ==========================================================
 
-  // FUNGSI A: Mengatur aksi saat dropdown pilihan produk berubah (Auto-Fill Harga Jual Satuan)
+  const handleCustomerSelectChange = (namaSelected) => {
+    setFormData({ ...formData, pelanggan: namaSelected });
+
+    const dataCust = daftarCustomer.find((c) => c.nama === namaSelected);
+    if (dataCust && dataCust.alamat) {
+      setAlamat(dataCust.alamat);
+    } else {
+      setAlamat("");
+    }
+  };
+
   const handleProdukSelectChange = (indexStr) => {
     if (indexStr === "") {
       setItemInput({ selectedIndexProduk: "", qty: "", hargaCustom: "" });
       return;
     }
 
-    // Ambil data produk terarah berdasarkan nomor indeks array katalog gudang
     const prod = produkGudang[indexStr];
-
     setItemInput({
       selectedIndexProduk: indexStr,
-      qty: itemInput.qty || "", // Short-circuit guard agar field qty tidak bertipe undefined
-      // AUTO HARGA JUAL: Mengisi inputan secara otomatis menggunakan nilai harga_jual dasar barang
+      qty: itemInput.qty || "",
       hargaCustom: prod.harga ? prod.harga.toString() : "0",
     });
   };
 
-  // FUNGSI B: Memasukkan barang dari form input produk ke dalam list draf meja kasir (Keranjang POS)
   const handleTambahProduk = (e) => {
     e.preventDefault();
     if (
@@ -184,13 +141,11 @@ export default function Pos() {
 
     if (kuantitas <= 0 || hargaJual <= 0) return;
 
-    // REKONSILIASI KEMBAR: Cek apakah produk dengan SKU tersebut sudah nangkring di keranjang belanja?
     const itemEksisIdx = itemsKeranjang.findIndex(
       (item) => item.sku === prod.sku,
     );
 
     if (itemEksisIdx !== -1) {
-      // Jika SKU sudah ada, cukup akumulasikan jumlah kuantitas lamanya dengan inputan kuantitas yang baru
       setItemsKeranjang((prev) =>
         prev.map((item, idx) =>
           idx === itemEksisIdx
@@ -203,7 +158,6 @@ export default function Pos() {
         ),
       );
     } else {
-      // Jika SKU benar-benar baru, daftarkan baris objek barang baru ke dalam list array keranjang POS
       setItemsKeranjang((prev) => [
         ...prev,
         {
@@ -216,22 +170,19 @@ export default function Pos() {
       ]);
     }
 
-    // Bersihkan form baris input barang agar siap mengetik atau memilih item selanjutnya
     setItemInput({ selectedIndexProduk: "", qty: "", hargaCustom: "" });
     toast.success("Produk berhasil dimuat ke draf nota.", { autoClose: 1500 });
   };
 
-  // FUNGSI C: Mengeluarkan satu baris item barang dari list pratinjau nota A4
   const handleHapusItem = (sku) => {
     setItemsKeranjang((prev) => prev.filter((item) => item.sku !== sku));
     toast.info("Item dikeluarkan dari keranjang.", { autoClose: 1500 });
   };
 
-  // FUNGSI D: Menentukan nama pembeli manual/sementara jika bendera isTambahCustomerBaru aktif
   const handleSimpanCustomerBaru = () => {
     if (namaCustomerBaru.trim() !== "") {
       setFormData((prev) => ({ ...prev, pelanggan: namaCustomerBaru.trim() }));
-      setAlamat(""); // Kosongkan alamat agar admin bisa mengetik manual lokasi kirim customer baru
+      setAlamat("");
       setIsTambahCustomerBaru(false);
       setNamaCustomerBaru("");
       toast.success("Customer sementara berhasil ditentukan.");
@@ -239,12 +190,10 @@ export default function Pos() {
   };
 
   // ==========================================================
-  // [SESI 4: ASYNCHRONOUS API MUTATION & ARRAYBUFFER LOGIC]
+  // [DATABASE MUTATION & BLOB DOWNLOAD]
   // ==========================================================
 
-  // FUNGSI UTAMA: Mengunci transaksi proforma ke cloud Django sekaligus menangkap data biner PDF untuk diunduh langsung
   const handleCetakDanSimpanInvoice = async () => {
-    // Rangkaian gerbang validasi administratif data POS sebelum dikirim via internet
     if (!formData.nomorInvoice || formData.nomorInvoice.trim() === "") {
       return toast.error("Gagal! Nomor Invoice wajib diisi.");
     }
@@ -255,11 +204,10 @@ export default function Pos() {
       return toast.error("Gagal! Keranjang muatan barang masih kosong.");
     }
 
-    // Bungkus payload terstruktur rapi sesuai spesifikasi serializer database Django
     const payload = {
       nomor_invoice: formData.nomorInvoice,
       pelanggan: formData.pelanggan,
-      alamat_pengiriman: alamat.trim() || "Jakarta Utara", // Default alamat fallback jika kosong
+      alamat_pengiriman: alamat.trim() || "Pickup",
       tanggal: formData.tanggal,
       ongkir: parseInt(formData.ongkir) || 0,
       items: itemsKeranjang.map((item) => ({
@@ -271,24 +219,24 @@ export default function Pos() {
       })),
     };
 
-    // Tampilkan animasi loading bertipe status mengambang (floating toast)
     const idToastLoading = toast.loading(
       "Sedang memproses dokumen penawaran dan memproses file PDF...",
     );
 
     try {
+      const token = localStorage.getItem("accessToken");
       const response = await fetch(
         "http://127.0.0.1:8000/api/sales/proforma-invoices/",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify(payload),
         },
       );
 
-      // Deteksi validasi error khusus backend jika nomor proforma invoice kedapatan duplikat di server
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         if (errorData.nomor_invoice) {
@@ -297,9 +245,7 @@ export default function Pos() {
         throw new Error("Gagal memproses dokumen invoice di server.");
       }
 
-      // LOGIKA BINER (STREAM DOWNLOAD): Menangkap aliran data mentah berkas PDF dari Django REST Framework
       const buffer = await response.arrayBuffer();
-      // Bungkus data buffer biner ke dalam objek Blob bertipe MIME aplikasi PDF resmi
       const pdfBlob = new Blob([buffer], { type: "application/pdf" });
 
       if (pdfBlob.size === 0) {
@@ -308,7 +254,6 @@ export default function Pos() {
         );
       }
 
-      // Prosedur Unduh Otomatis: Membuat tautan virtual di memori browser, eksekusi klik, lalu hancurkan link-nya
       const fileUrl = window.URL.createObjectURL(pdfBlob);
       const linkDownload = document.createElement("a");
       linkDownload.href = fileUrl;
@@ -318,20 +263,17 @@ export default function Pos() {
         : "Customer";
       const tanggalInvoice = formData.tanggal || "Tanggal";
 
-      // Bersihkan string penamaan file dari simbol-simbol ilegal pembaca file sistem operasi
       const namaAman = namaCustomer.replace(/[/\\?%*:|"<>]/g, "-");
       const tanggalAman = tanggalInvoice.replace(/[/\\?%*:|"<>]/g, "-");
 
       linkDownload.download = `Proforma Invoice ${namaAman} ${tanggalAman}.pdf`;
-
       linkDownload.style.display = "none";
       document.body.appendChild(linkDownload);
-      linkDownload.click(); // Eksekusi download file PDF pesanan pembeli
+      linkDownload.click();
 
       document.body.removeChild(linkDownload);
-      window.URL.revokeObjectURL(fileUrl); // Sterilkan sisa URL memori browser
+      window.URL.revokeObjectURL(fileUrl);
 
-      // Ubah loading toast menjadi status sukses terbit
       toast.update(idToastLoading, {
         render: "Sukses! Transaksi selewat berhasil dikonversi ke PDF resmi.",
         type: "success",
@@ -339,7 +281,6 @@ export default function Pos() {
         autoClose: 3000,
       });
 
-      // BERSIHKAN MEJA KERJA KASIR: Kosongkan seluruh state form input karena lembar kerja POS sudah selesai direkam
       setItemsKeranjang([]);
       setAlamat("");
       setFormData({
@@ -349,7 +290,6 @@ export default function Pos() {
         ongkir: 0,
       });
 
-      // Pemicu maju hitungan nomor proforma otomatis selanjutnya dari database
       generateNomorProformaOtomatis();
     } catch (error) {
       toast.update(idToastLoading, {
@@ -362,15 +302,13 @@ export default function Pos() {
   };
 
   // ==========================================================
-  // [SESI 5: REAL-TIME HITUNG NOTA VALUASI FINANSIAL]
+  // [REAL-TIME CALCULATIONS]
   // ==========================================================
 
-  // Menghitung akumulasi nilai belanja bersih komoditas barang di keranjang
   const hitungSubtotal = useMemo(() => {
     return itemsKeranjang.reduce((sum, item) => sum + item.total, 0);
   }, [itemsKeranjang]);
 
-  // Menghitung nilai grand total akhir setelah ditambahkan dengan variabel ongkos kirim ekspedisi
   const hitungGrandTotal = useMemo(() => {
     return hitungSubtotal + (parseInt(formData.ongkir) || 0);
   }, [hitungSubtotal, formData.ongkir]);
@@ -682,7 +620,7 @@ export default function Pos() {
             </table>
           </div>
 
-          {/* AREA PENALTY FOOTER FINANSIAL & BANK ACCOUNT INFO */}
+          {/* AREA FOOTER FINANSIAL & BANK ACCOUNT INFO */}
           <div className="border-t border-gray-200 pt-4">
             <div className="flex justify-between items-start">
               <div className="text-[11px] text-gray-600 space-y-0.5 border border-dashed border-gray-300 p-2.5 rounded-lg bg-gray-50/50 font-medium">

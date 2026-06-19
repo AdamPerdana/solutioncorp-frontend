@@ -11,14 +11,13 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
         : "text-gray-400 hover:text-white hover:bg-[#262932]"
     }`;
 
-  // Fungsi tutup sidebar di layar HP
   const handleMobileClick = () => {
     if (closeMobileMenu) closeMobileMenu();
   };
 
   return (
-    <div className="w-64 h-screen bg-[#1a1c23] border-r border-gray-800 flex flex-col justify-between font-sans text-gray-300 select-none flex-shrink-0">
-      <div className="overflow-y-auto flex-1">
+    <div className="w-64 h-screen bg-[#1a1c23] border-r border-gray-800 flex flex-col justify-between font-sans text-gray-300 select-none flex-shrink-0 sticky top-0">
+      <div className="overflow-y-auto flex-1 min-h-0">
         <div className="p-6 border-b border-gray-800/50 bg-[#15171c]/30">
           <h1 className="text-sm font-bold text-white tracking-wide uppercase">
             SOLUTION CORP
@@ -28,9 +27,7 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </p>
         </div>
 
-        {/* Dashboard */}
         <div className="px-4 pt-4 pb-2 space-y-1">
-          {/* Menu Dashboard Global */}
           <NavLink
             to="/dashboard"
             className={linkStyle}
@@ -38,18 +35,8 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           >
             <span className="mr-2.5 text-sm">🏠</span> Dashboard Global
           </NavLink>
-
-          {/* Menu Dashboard Toko */}
-          <NavLink
-            to="/dashboard-toko"
-            className={linkStyle}
-            onClick={handleMobileClick}
-          >
-            <span className="mr-2.5 text-sm">🏪</span> Dashboard Toko
-          </NavLink>
         </div>
 
-        {/* 1. Group: Sales */}
         <div className="px-4 py-2">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Sales
@@ -77,6 +64,13 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
               <span className="mr-2.5 text-sm">⚪</span> Point Of Sales (POS)
             </NavLink>
             <NavLink
+              to="/sales/marketplace"
+              className={linkStyle}
+              onClick={handleMobileClick}
+            >
+              <span className="mr-2.5 text-sm">⚪</span> Marketplace
+            </NavLink>
+            <NavLink
               to="/sales/laporan-sales"
               className={linkStyle}
               onClick={handleMobileClick}
@@ -86,7 +80,6 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </nav>
         </div>
 
-        {/* 2. Group: Finance */}
         <div className="px-4 py-4">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Finance
@@ -116,7 +109,6 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </nav>
         </div>
 
-        {/* 3. Group: Inventory */}
         <div className="px-4 py-2">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Inventory
@@ -167,8 +159,7 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </nav>
         </div>
 
-        {/* Laporan Penjualan */}
-        <div className="px-4 py-2 border-t border-gray-800/40 pt-4">
+        <div className="px-4 py-2 border-t border-gray-800/40 pt-4 mb-4">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Laporan Penjualan
           </p>
@@ -182,9 +173,9 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
                 <span>Laporan</span>
               </div>
               <span
-                className={`text-[10px] transition-transform duration-200 ${isLaporanOpen ? "rotate-90" : ""}`}
+                className={`text-[11px] text-gray-500 transition-transform duration-200 ${isLaporanOpen ? "rotate-90" : ""}`}
               >
-                ▶
+                ❯
               </span>
             </button>
 
@@ -217,28 +208,26 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
         </div>
       </div>
 
-      <div className="p-4 border-t border-gray-800 bg-[#15171c]">
-        <div className="flex items-center justify-between mb-1 px-1">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
-              A
-            </div>
-            <div className="truncate">
-              <p className="text-xs font-semibold text-white truncate">
-                Adam Perdana
-              </p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wide font-medium">
-                Owner
-              </p>
-            </div>
+      <div className="p-4 border-t border-gray-800 bg-[#15171c] h-16 flex-shrink-0 flex items-center justify-between">
+        <div className="flex items-center space-x-3 overflow-hidden min-w-0 flex-1 mr-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white font-bold text-xs shadow-md flex-shrink-0 uppercase">
+            O
           </div>
-          <button
-            onClick={onLogout}
-            className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-          >
-            Exit
-          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-white truncate block w-full">
+              Operator
+            </p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-wide font-medium truncate block w-full">
+              STAFF
+            </p>
+          </div>
         </div>
+        <button
+          onClick={onLogout}
+          className="text-xs text-gray-500 hover:text-red-400 transition-colors flex-shrink-0 cursor-pointer"
+        >
+          Exit
+        </button>
       </div>
     </div>
   );

@@ -1,74 +1,51 @@
 import React, { useState, useEffect, useMemo } from "react";
-// IMPOR NOTIFIKASI TOAST MODERN
 import { ToastContainer, toast } from "react-toastify";
+import { apiRequest } from "../../api";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function LaporanSales() {
-  // ==========================================================
-  // [SESI 1: STATE MANAGEMENT & INITIALIZATION (LACI MEMORI)]
-  // ==========================================================
-
-  // Laci utama penampung riwayat data transaksi penjualan riil hasil tarikan dari database Django
   const [dataSales, setDataSales] = useState([]);
-
-  // Saklar loading utama untuk mengontrol indikator visual saat browser menyinkronkan data server
   const [loading, setLoading] = useState(true);
 
-  // LOGIKA SETTING DATE DEFAULT (AWAL BULAN): Mengunci string tanggal ke tanggal 1 di bulan berjalan (YYYY-MM-01)
   const [filterTglMulai, setFilterTglMulai] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
   });
 
-  // LOGIKA SETTING DATE DEFAULT (AKHIR BULAN): Mencari hari terakhir (bisa tanggal 28, 29, 30, atau 31) pada bulan berjalan
   const [filterTglSelesai, setFilterTglSelesai] = useState(() => {
     const d = new Date();
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); // Parameter 0 mengambil hari terakhir bulan sebelumnya
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${lastDay}`;
   });
 
-  // Keyword string untuk memfilter pencarian nomor invoice atau nama pelanggan secara real-time
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Menyimpan status filter keuangan, pilihan standarnya adalah "Semua Status"
   const [filterStatus, setFilterStatus] = useState("Semua Status");
-
-  // Slot memori penyimpan objek transaksi yang diklik admin untuk ditinjau rincian item barangnya di pop-up modal
   const [salesTerpilih, setSalesTerpilih] = useState(null);
-
-  // Slot pengunci transaksi yang ditargetkan untuk dihapus permanen lewat modal konfirmasi merah
   const [dataAkanDihapus, setDataAkanDihapus] = useState(null);
 
   // ==========================================================
-  // [SESI 2: DATA FETCHING FROM DJANGO BACKEND (SINKRONISASI)]
+  // [DATA FETCHING WITH JWT AUTHORIZATION]
   // ==========================================================
 
-  // Trigger Otomatis: Tarik data transaksi penjualan sesaat setelah halaman dibuka pertama kali
   useEffect(() => {
     fetchSeluruhArsipSales();
   }, []);
 
-  // Fungsi pengambil data riwayat penjualan utuh dari cloud backend Django
   const fetchSeluruhArsipSales = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/sales/pos-transactions/?all=true",
-      );
-      if (response.ok) {
-        const data = await response.json();
-
-        // Memetakan skema snake_case API backend menjadi camelCase agar serasi dengan arsitektur frontend React
+      const data = await apiRequest("/api/sales/pos-transactions/?all=true");
+      if (data) {
         const dataDipetakan = data.map((item) => ({
           id: item.id,
           nomorInvoice: item.nomor_invoice,
           pelanggan: item.pelanggan,
           tanggal: item.tanggal,
-          status: item.status === "Lunas" ? "LUNAS" : "BELUM LUNAS", // Standardisasi penulisan string status keuangan
-          nominal: item.grand_total,
+          status: item.status === "Lunas" ? "LUNAS" : "BELUM LUNAS",
+          nominal: item.omset_murni,
           metodeBayar: item.metode_bayar,
           ongkir: item.ongkir,
-          alamat: item.alamat || "Melalui Loket Kasir POS Proyek", // Fallback string jika alamat pengiriman kosong
+          alamat: item.alamat || "Pickup",
           items: item.items.map((it) => ({
             sku: it.sku,
             nama: it.nama_produk,
@@ -87,44 +64,32 @@ export default function LaporanSales() {
     }
   };
 
-  // ==========================================================
-  // [SESI 3: LOGIKA RUMUSAN FILTERING UTAMA (REAL-TIME FILTER)]
-  // ==========================================================
-  // useMemo bertugas mengunci performa rendering agar tabel tidak lambat saat admin mengetik huruf pencarian
   const dataLaporanDisaring = useMemo(() => {
     return dataSales.filter((row) => {
-      // Parameter A: Rentang Tanggal (Harus berada di antara tanggal mulai dan tanggal selesai)
       const cocokTanggal =
         row.tanggal >= filterTglMulai && row.tanggal <= filterTglSelesai;
 
-      // Parameter B: Input Kata Kunci (Mencocokkan string nomor invoice atau nama pembeli)
       const cocokSearch =
         row.nomorInvoice.toLowerCase().includes(searchTerm.toLowerCase()) ||
         row.pelanggan.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // Parameter C: Opsi Dropdown Status Keuangan ("LUNAS" / "BELUM LUNAS")
       const cocokStatus =
         filterStatus === "Semua Status" ||
         row.status.toUpperCase() === filterStatus.toUpperCase();
 
-      // Transaksi lolos saringan jika memenuhi ketiga kriteria kecocokan di atas
       return cocokTanggal && cocokSearch && cocokStatus;
     });
   }, [dataSales, filterTglMulai, filterTglSelesai, searchTerm, filterStatus]);
 
-  // ==========================================================
-  // [SESI 4: METRIK KEUANGAN GLOBAL (SUMMARY METRICS ENGINE)]
-  // ==========================================================
-  // Otomatis menghitung ulang akumulasi omset dan piutang berjalan mengikuti hasil saringan filter di atas
   const ringkasanMetrik = useMemo(() => {
     let totalOmset = 0;
     let totalPiutangBelumLunas = 0;
     let totalNotaInvoice = dataLaporanDisaring.length;
 
     dataLaporanDisaring.forEach((row) => {
-      totalOmset += row.nominal; // Akumulasi total nilai seluruh penjualan kotor
+      totalOmset += row.nominal;
       if (row.status === "BELUM LUNAS") {
-        totalPiutangBelumLunas += row.nominal; // Akumulasi sisa dana transaksi tempo yang belum tertagih
+        totalPiutangBelumLunas += row.nominal;
       }
     });
 
@@ -132,39 +97,40 @@ export default function LaporanSales() {
   }, [dataLaporanDisaring]);
 
   // ==========================================================
-  // [SESI 5: CORE ENGINE: REPRINT INVOICE OR SURAT JALAN PDF]
+  // [ CORE ENGINE: REPRINT INVOICE OR SURAT JALAN PDF]
   // ==========================================================
-  // Fungsi penembak API khusus untuk mengunduh ulang cetakan dokumen eksternal berwujud file PDF langsung dari server
+
   const handleCetakDokumen = async (e, tipe, nomorInv, namaCust, tglNota) => {
-    e.stopPropagation(); // Menahan gelembung klik agar baris tabel di bawahnya tidak ikut memicu modal rincian terbuka
+    e.stopPropagation();
 
-    // Sterilkan karakter string nama customer dari simbol ilegal yang dilarang oleh Windows/Mac
     const namaAman = namaCust.replace(/[/\\?%*:|"<>]/g, "-");
-
-    // Tentukan rute endpoint dinamis berdasarkan tipe tombol dokumen yang ditekan admin
     const endpointPath =
       tipe === "INVOICE" ? "reprint-invoice" : "print-surat-jalan";
-
     const idToastReport = toast.loading(
       `Sedang menggambar berkas biner ${tipe} dari server...`,
     );
 
     try {
-      // Jalankan encoding komponen URL agar string nomor invoice aman saat melewati jaringan internet
       const nomorInvoiceAman = encodeURIComponent(nomorInv);
+      const token = localStorage.getItem("accessToken");
+
       const response = await fetch(
         `http://127.0.0.1:8000/api/sales/pos-transactions/${endpointPath}/?invoice=${nomorInvoiceAman}`,
+        {
+          method: "GET",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
       );
 
       if (!response.ok)
         throw new Error(`Gagal meregenerasi PDF ${tipe} dari database.`);
 
-      // JALUR MEMORI BINER (STREAM): Tangkap data stream arrayBuffer dari backend untuk dilarungkan menjadi Blob file PDF
       const buffer = await response.arrayBuffer();
       const pdfBlob = new Blob([buffer], { type: "application/pdf" });
       const fileUrl = window.URL.createObjectURL(pdfBlob);
 
-      // Gunakan teknik virtual downloading link samaran untuk memicu download otomatis file di komputer admin
       const linkDownload = document.createElement("a");
       linkDownload.href = fileUrl;
 
@@ -176,13 +142,11 @@ export default function LaporanSales() {
 
       linkDownload.style.display = "none";
       document.body.appendChild(linkDownload);
-      linkDownload.click(); // Eksekusi download instan berkas cetak
+      linkDownload.click();
 
-      // Hancurkan link sampah virtual dari memori browser setelah download berhasil dipicu
       document.body.removeChild(linkDownload);
       window.URL.revokeObjectURL(fileUrl);
 
-      // Perbarui notifikasi report loading menjadi sukses terunduh
       toast.update(idToastReport, {
         render: `Sukses! Dokumen ${tipe} berhasil diunduh otomatis.`,
         type: "success",
@@ -200,41 +164,38 @@ export default function LaporanSales() {
   };
 
   // ==========================================================
-  // [SESI 6: DATABASE MUTATION (LOGIKAELEMINASI TRANSAKSI)]
+  // [ DATABASE MUTATION]
   // ==========================================================
-  // Fungsi eksekusi pembatalan/penghapusan nota invoice permanen dari cloud database (DELETE REQUEST)
+
   const handleEksekusiHapus = async () => {
     if (!dataAkanDihapus) return;
 
     const idToastDelete = toast.loading(
-      `Sedang menghancurkan berkas faktur ${dataAkanDihapus.nomorInvoice}...`,
+      `Sedang memproses pembatalan massal faktur ${dataAkanDihapus.nomorInvoice}...`,
     );
 
     try {
-      const nomorInvoiceAman = encodeURIComponent(dataAkanDihapus.nomorInvoice);
-      const response = await fetch(
-        `http://127.0.0.1:8000/api/sales/pos-transactions/delete-by-invoice/?invoice=${nomorInvoiceAman}`,
-        { method: "DELETE" },
+      const data = await apiRequest(
+        "/api/sales/pos-transactions/delete-by-invoice/",
+        {
+          method: "DELETE",
+          body: JSON.stringify({ invoice: dataAkanDihapus.nomorInvoice }),
+        },
       );
 
-      if (!response.ok) {
-        throw new Error("Gagal menghapus arsip transaksi dari server.");
-      }
-
       toast.update(idToastDelete, {
-        render: `Sukses! Arsip faktur ${dataAkanDihapus.nomorInvoice} berhasil dilenyapkan.`,
+        render: `Sukses! Faktur ${dataAkanDihapus.nomorInvoice} beserta seluruh catatan piutang finance berhasil dibersihkan.`,
         type: "success",
         isLoading: false,
         autoClose: 3000,
       });
 
-      // Tutup semua tirai modal peninjau dan segarkan isi tabel laporan mengikuti isi database terbaru
       setDataAkanDihapus(null);
       setSalesTerpilih(null);
       fetchSeluruhArsipSales();
     } catch (error) {
       toast.update(idToastDelete, {
-        render: error.message,
+        render: "Gagal menghapus arsip transaksi dari server database pusat.",
         type: "error",
         isLoading: false,
         autoClose: 4000,
@@ -246,7 +207,6 @@ export default function LaporanSales() {
     <div className="p-6 min-h-screen bg-[#15171c] text-gray-300 flex flex-col font-sans">
       <ToastContainer theme="dark" />
 
-      {/* HEADER HALAMAN */}
       <div className="pb-4 border-b border-gray-800 mb-6 flex justify-between items-center">
         <h2 className="text-xl font-bold text-white tracking-wide">
           Laporan Penjualan (Sales Report)
@@ -259,7 +219,6 @@ export default function LaporanSales() {
         </button>
       </div>
 
-      {/* METRIK SUMMARY CARDS (PAPAN RANGKUMAN INDIKATOR ATAS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-md">
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
@@ -296,7 +255,6 @@ export default function LaporanSales() {
         </div>
       </div>
 
-      {/* BARIS FILTRASI PARAMETER */}
       <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
         <div>
           <label className="block text-gray-500 mb-1">Mulai Tanggal</label>
@@ -342,7 +300,6 @@ export default function LaporanSales() {
         </div>
       </div>
 
-      {/* CORE TABEL AKTIVITAS LAPORAN */}
       <div className="bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl">
         <div className="overflow-x-auto rounded-lg border border-gray-800/60">
           <table className="w-full text-left text-xs border-collapse">
@@ -402,7 +359,6 @@ export default function LaporanSales() {
                       Pcs
                     </td>
                     <td className="p-3.5 text-center select-none">
-                      {/* BADGE LABELLING STATUS FINANSIAL NOTA */}
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-black border tracking-wide ${
                           row.status === "LUNAS"
@@ -416,7 +372,10 @@ export default function LaporanSales() {
                     <td className="p-3.5 text-right font-black text-sky-400 font-mono text-[13px]">
                       Rp {row.nominal.toLocaleString("id-ID")}
                     </td>
-                    <td className="p-3.5 text-center pr-5">
+                    <td
+                      className="p-3.5 text-center pr-5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
@@ -430,7 +389,6 @@ export default function LaporanSales() {
                             )
                           }
                           className="bg-sky-950/40 border border-sky-800/60 hover:bg-sky-900/60 text-sky-400 font-bold px-2.5 py-1 rounded text-[10px] uppercase transition-all active:scale-95 shadow-sm"
-                          title="Cetak Ulang Invoice Komersial"
                         >
                           INV
                         </button>
@@ -446,7 +404,6 @@ export default function LaporanSales() {
                             )
                           }
                           className="bg-emerald-950/40 border border-emerald-800/60 hover:bg-emerald-900/60 text-emerald-400 font-bold px-2.5 py-1 rounded text-[10px] uppercase transition-all active:scale-95 shadow-sm"
-                          title="Cetak Surat Jalan Gudang / DO"
                         >
                           SJ
                         </button>
@@ -460,11 +417,9 @@ export default function LaporanSales() {
         </div>
       </div>
 
-      {/* POP-UP MODAL PENINJAU RINCIAN BARANG SALES (DIALIRKAN SAAT ROW TABEL DIKLIK) */}
       {salesTerpilih && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-gray-800 rounded-2xl w-full max-w-xl p-5 space-y-4 shadow-2xl animate-fadeIn">
-            {/* Header Modal */}
             <div className="flex justify-between items-start border-b border-gray-800 pb-3">
               <div>
                 <h3 className="text-sm font-black text-white uppercase tracking-wider">
@@ -484,7 +439,6 @@ export default function LaporanSales() {
               </button>
             </div>
 
-            {/* Sub-Header Pelanggan & Alamat */}
             <div className="bg-[#15171c] p-3 rounded-lg border border-gray-800 text-xs space-y-1">
               <div>
                 <span className="text-gray-500 text-[10px] block">
@@ -518,7 +472,6 @@ export default function LaporanSales() {
               </div>
             </div>
 
-            {/* Tabel Detail Multi-Item Komoditas Terjual */}
             <div className="overflow-hidden border border-gray-800/80 rounded-lg">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -560,7 +513,6 @@ export default function LaporanSales() {
               </table>
             </div>
 
-            {/* Tombol Closing & Aksi Hapus yang memicu Modal Merah Sekunder */}
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -581,7 +533,6 @@ export default function LaporanSales() {
         </div>
       )}
 
-      {/* POP-UP MODAL KONFIRMASI HAPUS PERMANEN (SI MERAH SEKUNDER) */}
       {dataAkanDihapus && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
           <div className="bg-[#1a1c23] border border-red-500/30 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-fadeIn">
@@ -599,7 +550,7 @@ export default function LaporanSales() {
                 {dataAkanDihapus.nomorInvoice}{" "}
               </span>
               beserta seluruh rincian barangnya? Tindakan ini tidak dapat
-              dibatalkan.
+              breattalkan.
             </div>
 
             <div className="flex gap-3 pt-2 text-xs">
