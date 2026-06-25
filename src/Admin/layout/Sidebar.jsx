@@ -30,6 +30,7 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
         <div className="px-4 pt-4 pb-2 space-y-1">
           <NavLink
             to="/dashboard"
+            end
             className={linkStyle}
             onClick={handleMobileClick}
           >
@@ -37,41 +38,42 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </NavLink>
         </div>
 
+        {/* SECTION: SALES */}
         <div className="px-4 py-2">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Sales
           </p>
           <nav className="space-y-1">
             <NavLink
-              to="/sales/customer"
+              to="/dashboard/sales/customer"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Customer
             </NavLink>
             <NavLink
-              to="/sales/invoice-proforma"
+              to="/dashboard/sales/invoice-proforma"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Invoice Proforma
             </NavLink>
             <NavLink
-              to="/sales/pos"
+              to="/dashboard/sales/pos"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Point Of Sales (POS)
             </NavLink>
             <NavLink
-              to="/sales/marketplace"
+              to="/dashboard/sales/marketplace"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Marketplace
             </NavLink>
             <NavLink
-              to="/sales/laporan-sales"
+              to="/dashboard/sales/laporan-sales"
               className={linkStyle}
               onClick={handleMobileClick}
             >
@@ -80,27 +82,28 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </nav>
         </div>
 
+        {/* SECTION: FINANCE */}
         <div className="px-4 py-4">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Finance
           </p>
           <nav className="space-y-1">
             <NavLink
-              to="/finance/piutang"
+              to="/dashboard/finance/piutang"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Piutang
             </NavLink>
             <NavLink
-              to="/finance/hutang"
+              to="/dashboard/finance/hutang"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Hutang
             </NavLink>
             <NavLink
-              to="/finance/biaya"
+              to="/dashboard/finance/biaya"
               className={linkStyle}
               onClick={handleMobileClick}
             >
@@ -109,48 +112,49 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </nav>
         </div>
 
+        {/* SECTION: INVENTORY */}
         <div className="px-4 py-2">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Inventory
           </p>
           <nav className="space-y-1">
             <NavLink
-              to="/inventory/inventorylog"
+              to="/dashboard/inventory/inventorylog"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Inventory Log
             </NavLink>
             <NavLink
-              to="/inventory/stock"
+              to="/dashboard/inventory/stock"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Stock
             </NavLink>
             <NavLink
-              to="/inventory/produk"
+              to="/dashboard/inventory/produk"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Produk
             </NavLink>
             <NavLink
-              to="/inventory/purchase-order"
+              to="/dashboard/inventory/purchase-order"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> Purchase Order
             </NavLink>
             <NavLink
-              to="/inventory/PoReport"
+              to="/dashboard/inventory/PoReport"
               className={linkStyle}
               onClick={handleMobileClick}
             >
               <span className="mr-2.5 text-sm">⚪</span> PO Report
             </NavLink>
             <NavLink
-              to="/inventory/supplier"
+              to="/dashboard/inventory/supplier"
               className={linkStyle}
               onClick={handleMobileClick}
             >
@@ -159,6 +163,7 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
           </nav>
         </div>
 
+        {/* SECTION: ACCOUNTING REPORT */}
         <div className="px-4 py-2 border-t border-gray-800/40 pt-4 mb-4">
           <p className="px-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
             Laporan Penjualan
@@ -182,21 +187,21 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
             {isLaporanOpen && (
               <div className="pl-6 mt-1 space-y-1 border-l border-gray-800 ml-5">
                 <NavLink
-                  to="/Laporan/laba-rugi"
+                  to="/dashboard/Laporan/laba-rugi"
                   className={linkStyle}
                   onClick={handleMobileClick}
                 >
                   Laporan laba rugi
                 </NavLink>
                 <NavLink
-                  to="/Laporan/LaporanPenjualan"
+                  to="/dashboard/Laporan/LaporanPenjualan"
                   className={linkStyle}
                   onClick={handleMobileClick}
                 >
                   Laporan penjualan
                 </NavLink>
                 <NavLink
-                  to="Laporan/Pengeluaran"
+                  to="/dashboard/Laporan/Pengeluaran"
                   className={linkStyle}
                   onClick={handleMobileClick}
                 >
@@ -208,6 +213,7 @@ export default function Sidebar({ onLogout, closeMobileMenu }) {
         </div>
       </div>
 
+      {/* FOOTER SIDEBAR */}
       <div className="p-4 border-t border-gray-800 bg-[#15171c] h-16 flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center space-x-3 overflow-hidden min-w-0 flex-1 mr-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white font-bold text-xs shadow-md flex-shrink-0 uppercase">

@@ -38,7 +38,7 @@ export default function PoReport() {
   const fetchSeluruhArsipPO = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest("/api/inventory/purchase-orders/?all=true");
+      const data = await apiRequest("/api/inventory/purchase-checkout/?all=true");
       if (data) {
         const dataDipetakan = data.map((item) => {
           const statusKeuangan =
@@ -188,7 +188,7 @@ export default function PoReport() {
 
     try {
       const data = await apiRequest(
-        "/api/inventory/purchase-orders/delete-by-po/",
+        "/api/inventory/purchase-checkout/delete-by-po/",
         {
           method: "DELETE",
           body: JSON.stringify({ po: dataAkanDihapus.noPO }),

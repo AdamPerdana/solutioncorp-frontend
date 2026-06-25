@@ -201,9 +201,7 @@ export default function Customer() {
         </h2>
       </div>
 
-      {/* GRID RESPONSIVE LAYOUT */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* PANEL KIRI: FORM REGISTRASI CLIENT */}
         <form
           onSubmit={handlePicuKonfirmasi}
           className="xl:col-span-3 bg-[#1a1c23] border border-gray-800 rounded-xl p-4 shadow-xl space-y-3.5"
@@ -283,7 +281,6 @@ export default function Customer() {
           </button>
         </form>
 
-        {/* PANEL KANAN: MONITORING TABLE */}
         <div className="xl:col-span-9 bg-[#1a1c23] border border-gray-800 rounded-xl p-5 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider self-start sm:self-center">

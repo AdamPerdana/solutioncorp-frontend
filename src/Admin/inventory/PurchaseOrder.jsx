@@ -59,14 +59,14 @@ export default function PurchaseOrder() {
         setProdukGudang(dataDipetakan);
       }
     } catch (error) {
-      console.error("Gagal sinkronisasi katalog produk PO:", error);
+      console.error("Gagal sinkronisasi product produk PO:", error);
     }
   };
 
   const fetchHistoriSertaUrutanPO = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest("/api/inventory/purchase-orders/");
+      const data = await apiRequest("/api/inventory/purchase-checkout/");
       if (data) {
         const dataDipetakan = data.map((item) => ({
           id: item.id,
@@ -103,7 +103,7 @@ export default function PurchaseOrder() {
 
     try {
       const resData = await apiRequest(
-        "/api/inventory/purchase-orders/last-counter/",
+        "/api/inventory/purchase-checkout/last-counter/",
       );
       if (resData) {
         jumlahPOBulanIni = resData.counter;
@@ -237,7 +237,7 @@ export default function PurchaseOrder() {
 
     try {
       const data = await apiRequest(
-        "/api/inventory/purchase-orders/delete-by-po/",
+        "/api/inventory/purchase-checkout/delete-by-po/",
         {
           method: "DELETE",
           body: JSON.stringify({ po: dataAkanDihapus.noPO }),

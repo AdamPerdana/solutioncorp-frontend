@@ -103,7 +103,7 @@ export default function Pos() {
         setProdukGudang(dataDipetakan);
       }
     } catch (error) {
-      console.error("Gagal sinkronisasi katalog produk POS:", error);
+      console.error("Gagal sinkronisasi product produk POS:", error);
     } finally {
       setLoading(false);
     }
@@ -243,7 +243,7 @@ export default function Pos() {
         jatuhTempo: prev.tanggal,
       }));
     } else {
-      const defaultHari = 14;
+      const defaultHari = 15;
       setFormData((prev) => ({
         ...prev,
         metodeBayar: "TEMPO/KREDIT",
@@ -326,6 +326,7 @@ export default function Pos() {
       grandTotal: grandTotalCart,
       items: cart,
       jatah_tempo_hari: finalHariTempo,
+      jatuhTempo: formData.jatuhTempo,
     });
   };
 

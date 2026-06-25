@@ -4,7 +4,10 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation, // 🎯 Tambahkan import ini untuk melacak posisi rute
 } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { CartProvider } from "./Marketplace/context/CartContext";
 
 // ==========================================================
 // [ GLOBAL LAYOUT & AUTHENTICATION COMPONENTS ]
@@ -47,6 +50,14 @@ import LaporanPenjualan from "./Admin/Laporan/LaporanPenjualan";
 import LaporanPengeluaran from "./Admin/Laporan/LaporanPengeluaran";
 
 // ==========================================================
+// [ 🌟 NEW SUB-MODULES: MARKETPLACE PUBLIK ]
+// ==========================================================
+import Home from "./Marketplace/pages/Home";
+import AboutUs from "./Marketplace/pages/AboutUs";
+import Checkout from "./Marketplace/pages/Checkout";
+import ProductDetail from "./Marketplace/pages/Product";
+
+// ==========================================================
 // [ CENTRAL NAVIGATION GUARD / PROTECTED ROUTE ]
 // ==========================================================
 function ProtectedRoute({ isLoggedIn, children }) {
@@ -58,25 +69,25 @@ function ProtectedRoute({ isLoggedIn, children }) {
 }
 
 // ==========================================================
-// [ MAIN APPLICATION ENGINE ]
+// [ SUB-ENGINE: ROUTE ANIMATION HANDLER ]
 // ==========================================================
-function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return !!localStorage.getItem("accessToken");
-  });
-
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    setIsLoggedIn(false);
-  };
+function AppRoutes({ isLoggedIn, handleLoginSuccess, handleLogout }) {
+  const location = useLocation(); // 🎯 Tangkap lokasi URL saat ini
 
   return (
-    <Router>
-      <Routes>
+    <AnimatePresence mode="wait">
+      {/* 🎯 Pasangkan location & key unik berbasis pathname agar Framer Motion tahu rute berganti */}
+      <Routes location={location} key={location.pathname}>
+        {/* ==========================================================
+            [ 🌟 JALUR DATA PUBLIK: MINI MARKETPLACE ]
+            ========================================================== */}
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<AboutUs />} />
+        <Route path="/checkout" element={<Checkout />} />
+
+        {/* 🎯 TERPERBAKI: Menggunakan :slug agar klop dengan ProductDetail.jsx */}
+        <Route path="/product/:slug" element={<ProductDetail />} />
+
         {/* GATEWAY KONTROL GATE LOGIN */}
         <Route
           path="/login"
@@ -89,23 +100,19 @@ function App() {
           }
         />
 
-        {/* WORKSPACE AREA (TERKUNCI PENUH) */}
+        {/* ==========================================================
+            [ WORKSPACE AREA INTERNAL KANTOR (TERKUNCI PENUH) ]
+            ========================================================== */}
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute isLoggedIn={isLoggedIn}>
               <DashboardLayout onLogout={handleLogout} />
             </ProtectedRoute>
           }
         >
-          {/* DEFAULT REDIRECT */}
-          <Route index element={<Navigate to="/dashboard" replace />} />
-
-          {/* MAIN DASHBOARD */}
-          <Route
-            path="dashboard"
-            element={<Dashboard onLogout={handleLogout} />}
-          />
+          {/* DEFAULT UTAMA */}
+          <Route index element={<Dashboard onLogout={handleLogout} />} />
 
           {/* SECTION JALUR DATA: SALES */}
           <Route path="sales/customer" element={<Customer />} />
@@ -135,18 +142,58 @@ function App() {
           />
           <Route path="laporan/pengeluaran" element={<LaporanPengeluaran />} />
 
-          {/* SECTION JALUR DATA: CATCH-ALL 404 ROUTE */}
+          {/* CATCH-ALL INTERN PANEL ADMIN */}
           <Route
             path="*"
             element={
               <div className="p-8 text-sm text-gray-400">
-                Halaman Tidak Ditemukan.
+                Halaman Tidak Ditemukan di Panel Admin.
               </div>
             }
           />
         </Route>
+
+        {/* GLOBAL CATCH-ALL 404 GLOBAL */}
+        <Route
+          path="*"
+          element={
+            <div className="p-8 text-sm text-gray-400 text-center min-h-screen bg-[#111215] flex items-center justify-center">
+              Halaman Tidak Ditemukan.
+            </div>
+          }
+        />
       </Routes>
-    </Router>
+    </AnimatePresence>
+  );
+}
+
+// ==========================================================
+// [ MAIN APPLICATION ENGINE ]
+// ==========================================================
+function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return !!localStorage.getItem("accessToken");
+  });
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    setIsLoggedIn(false);
+  };
+
+  return (
+    <CartProvider>
+      <Router>
+        <AppRoutes
+          isLoggedIn={isLoggedIn}
+          handleLoginSuccess={handleLoginSuccess}
+          handleLogout={handleLogout}
+        />
+      </Router>
+    </CartProvider>
   );
 }
 

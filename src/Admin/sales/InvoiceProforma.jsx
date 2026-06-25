@@ -63,7 +63,7 @@ export default function Pos() {
         setProdukGudang(dataDipetakan);
       }
     } catch (error) {
-      console.error("Gagal sinkronisasi katalog produk untuk Proforma:", error);
+      console.error("Gagal sinkronisasi product produk untuk Proforma:", error);
     } finally {
       setLoading(false);
     }
