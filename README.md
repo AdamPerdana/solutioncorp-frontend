@@ -1,35 +1,44 @@
-SolutionCorp Frontend
+# SolutionCorp Indonesia - Web System
 
-Dashboard internal untuk PT. Solution Corporation Indonesia. Proyek ini dibangun sebagai alat bantu manajemen keuangan dan operasional
+Sistem berbasis web terintegrasi untuk **PT. Solution Corporation Indonesia**. Proyek ini mencakup Katalog Produk publik untuk pelanggan serta Dashboard Internal sebagai alat bantu manajemen keuangan, produk, dan operasional perusahaan.
 
-Fitur Utama
+🚀 **Live Catalog (Customer):** [demo.solutioncorp.id](https://demo.solutioncorp.id)  
+📊 **Internal Dashboard (Staff):** [demo.solutioncorp.id/dashboard](https://demo.solutioncorp.id/dashboard)
 
-- Autentikasi: Sistem login dengan environment variables
-- Analitik Global: Visualisasi data keuangan (Omzet, Laba, Pengeluaran)
-- Navigasi Terstruktur: Sidebar dinamis untuk manajemen produk, supplier, dan laporan
+---
 
-Teknologi
+## 🔒 Kredensial Akses Demo
+Jika ingin menguji coba fitur admin pada *Live Dashboard*, silakan gunakan akun demo berikut:
+* **Username:** `demo`
+* **Password:** `admin123`
 
-- Framework: React.js (Vite)
-- Styling: Tailwind CSS
-- State Management: React Hooks (useState)
+---
 
-Cara Menjalankan
+## 🌟 Fitur Utama
 
-1. Clone repositori:
-   git clone https://github.com/AdamPerdana/solutioncorp-frontend.git
-2. Masuk ke folder proyek:
-   cd solutioncorp-frontend
-3. Install dependencies:
-   npm install
-4. Buat file .env di folder root dan tambahkan:
-   VITE_ADMIN_EMAIL=admin@admin.com
-   VITE_ADMIN_PASS=admin123
-5. Jalankan aplikasi:
-   npm run dev
+### 🛒 1. Katalog Publik (Customer Face)
+* **Product Showcase:** Menampilkan katalog produk yang tersedia untuk pelanggan secara responsif dan interaktif.
 
-Kredensial Demo
-Jika ingin mencoba aplikasi tanpa file .env, gunakan kredensial berikut:
+### 💼 2. Dashboard Internal (Staff & Management)
+* **Autentikasi Aman:** Sistem login yang terproteksi menggunakan environment variables.
+* **Analitik Global:** Visualisasi data keuangan secara real-time termasuk **Omzet**, **Laba**, dan **Pengeluaran**.
+* **Navigasi Terstruktur:** Sidebar dinamis untuk mempermudah manajemen produk, supplier, dan laporan operasional.
 
-- Email: admin@admin.com
-- Password: admin123
+---
+
+## 🛠️ Teknologi yang Digunakan
+
+* **Framework:** React.js (Vite)
+* **Styling:** Tailwind CSS
+* **State Management:** React Hooks (`useState`, `useEffect`)
+
+---
+
+## 💻 Cara Menjalankan secara Lokal
+
+Jika Anda ingin melakukan kloning dan menjalankan proyek ini di lingkungan lokal, ikuti langkah-langkah berikut:
+
+### 1. Clone Repositori
+```bash
+git clone [https://github.com/AdamPerdana/solutioncorp-frontend.git](https://github.com/AdamPerdana/solutioncorp-frontend.git)
+cd solutioncorp-frontend
